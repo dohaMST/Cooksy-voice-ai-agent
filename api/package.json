@@ -1,0 +1,15 @@
+{
+  "name": "zafran-api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Zafran local API: pantry, week plan, shopping list, recipes, and the approval gate. Loopback only.",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "mongodb": "^6.10.0"
+  }
+}

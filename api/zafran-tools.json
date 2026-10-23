@@ -1,0 +1,57 @@
+{
+  "$comment": "Contract for the zafran MCP server (api/mcp-server.mjs). One tool = one zafran-api route. Gated tools NEVER write: they store a pending approval and return approval_required. Approve/Deny are not tools; they are HTTP routes only the browser calls.",
+  "server": "zafran",
+  "tools": [
+    { "name": "pantry_list", "gated": false, "agents": ["cook", "planner"],
+      "description": "List pantry items, optionally filtered by name.",
+      "input": { "type": "object", "properties": { "name": { "type": "string" } }, "additionalProperties": false },
+      "route": "GET /pantry" },
+    { "name": "pantry_update", "gated": true, "risk": "low", "agents": ["planner"],
+      "description": "Add a pantry item or change its quantity. Needs approval.",
+      "input": { "type": "object", "required": ["name", "quantity", "unit"], "properties": { "name": { "type": "string", "maxLength": 80 }, "quantity": { "type": "number", "minimum": 0 }, "unit": { "type": "string", "maxLength": 16 }, "bestBefore": { "type": "string", "format": "date" } }, "additionalProperties": false },
+      "route": "POST /pantry/propose-update" },
+    { "name": "pantry_remove", "gated": true, "risk": "medium", "agents": ["planner"],
+      "description": "Remove a pantry item. Needs approval.",
+      "input": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "maxLength": 80 } }, "additionalProperties": false },
+      "route": "POST /pantry/propose-remove" },
+
+    { "name": "recipes_search", "gated": false, "agents": ["cook", "planner"],
+      "description": "Search TheMealDB by dish name, main ingredient or category.",
+      "input": { "type": "object", "required": ["query"], "properties": { "query": { "type": "string", "maxLength": 80 }, "by": { "enum": ["name", "ingredient", "category"] } }, "additionalProperties": false },
+      "route": "GET /recipes/search" },
+    { "name": "recipes_get", "gated": false, "agents": ["cook", "planner"],
+      "description": "Full recipe by TheMealDB id: ingredients with measures, steps, category, area. No cooking time or calories exist in this data.",
+      "input": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string", "pattern": "^[0-9]{1,8}$" } }, "additionalProperties": false },
+      "route": "GET /recipes/:id" },
+
+    { "name": "plan_view", "gated": false, "agents": ["cook", "planner"],
+      "description": "The meal plan for a date range (default: the current week).",
+      "input": { "type": "object", "properties": { "from": { "type": "string", "format": "date" }, "to": { "type": "string", "format": "date" } }, "additionalProperties": false },
+      "route": "GET /plan" },
+    { "name": "plan_set_meal", "gated": true, "risk": "low", "agents": ["planner"],
+      "description": "Put a recipe on a date and meal. Needs approval.",
+      "input": { "type": "object", "required": ["date", "meal", "recipeId"], "properties": { "date": { "type": "string", "format": "date" }, "meal": { "enum": ["breakfast", "lunch", "dinner"] }, "recipeId": { "type": "string", "pattern": "^[0-9]{1,8}$" }, "replace": { "type": "boolean" } }, "additionalProperties": false },
+      "route": "POST /plan/propose-set" },
+    { "name": "plan_clear_day", "gated": true, "risk": "medium", "agents": ["planner"],
+      "description": "Clear all meals on one date. Needs approval.",
+      "input": { "type": "object", "required": ["date"], "properties": { "date": { "type": "string", "format": "date" } }, "additionalProperties": false },
+      "route": "POST /plan/propose-clear" },
+
+    { "name": "shopping_view", "gated": false, "agents": ["cook", "planner"],
+      "description": "The current shopping list.",
+      "input": { "type": "object", "properties": {}, "additionalProperties": false },
+      "route": "GET /shopping" },
+    { "name": "shopping_build", "gated": true, "risk": "low", "agents": ["planner"],
+      "description": "Rebuild the list from the plan minus the pantry. Needs approval.",
+      "input": { "type": "object", "properties": { "from": { "type": "string", "format": "date" }, "to": { "type": "string", "format": "date" } }, "additionalProperties": false },
+      "route": "POST /shopping/propose-build" },
+    { "name": "shopping_export", "gated": true, "risk": "low", "agents": ["planner"],
+      "description": "Write the list to a text file in the Zafran data folder. Needs approval. Sends nothing to anyone.",
+      "input": { "type": "object", "properties": {}, "additionalProperties": false },
+      "route": "POST /shopping/propose-export" }
+  ],
+  "browserOnlyRoutes": [
+    "POST /approvals/:id/approve   (atomic pending->executing->executed; the server runs the stored action itself)",
+    "POST /approvals/:id/deny"
+  ]
+}
