@@ -28,7 +28,7 @@ export async function readError(response: Response, fallback: string) {
   return fallback;
 }
 
-/** Uploads the recording and streams the transcript back. */
+/** Uploads the recording and returns the finished transcript. */
 export async function transcribeRecording(
   file: File,
   onPartial: (text: string) => void,
@@ -39,22 +39,11 @@ export async function transcribeRecording(
   const response = await fetch("/api/transcribe", { method: "POST", body: form, ...(signal ? { signal } : {}) });
   if (!response.ok) throw new Error(await readError(response, "Could not understand that recording"));
 
-  let text = "";
-  await readSse(response, (data) => {
-    const payload = JSON.parse(data) as { type?: string; delta?: string; text?: string; error?: unknown };
-    if (payload.error) throw new Error("Transcription failed");
-    if (payload.type === "transcript.text.delta" && payload.delta) {
-      text += payload.delta;
-      onPartial(text);
-    }
-    if (payload.type === "transcript.text.done" && typeof payload.text === "string") {
-      text = payload.text;
-      onPartial(text);
-    }
-  });
-  const final = text.trim();
-  if (!final) throw new Error("I didn't hear any speech in that recording");
-  return final;
+  const data = (await response.json()) as { text?: unknown };
+  const text = typeof data.text === "string" ? data.text.trim() : "";
+  if (!text) throw new Error("I didn't hear any speech in that recording");
+  onPartial(text);
+  return text;
 }
 
 /** Streams the agent answer, reporting reasoning summary text and answer deltas separately. */

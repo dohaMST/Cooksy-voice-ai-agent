@@ -1,24 +1,21 @@
 import { unlockSpeaker } from "@/lib/voice/speak";
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Square, Radio, SlidersHorizontal, Paperclip, SendHorizontal, X as XIcon, RotateCcw, ThumbsUp, ListTree, Volume2, AlertTriangle, PanelsTopLeft, ScanFace } from "lucide-react";
 import { recordWav, type Recording } from "@/lib/voice/record-wav";
 import { streamAgentAnswer, transcribeRecording, type Turn } from "@/lib/voice/agent";
 import { transcribeLocal } from "@/lib/voice/local-asr";
-import { usePlans } from "@/components/plan-builder";
-import { BotBubble, InlineKeyboard, StepLog, TypingDots, UserBubble, useRunOptions, type RunStep } from "@/components/telegram-run";
+import { BotBubble, InlineKeyboard, StepLog, TypingDots, UserBubble, useRunOptions, type RunStep } from "@/components/chat-bubbles";
 import { getAgents, speakWith, useVoiceSettings } from "@/lib/settings/voice";
 import { GeneralSettings } from "@/components/general-settings";
-import { CloudSync } from "@/components/cloud-sync";
-import { cleanRaw, normalizeText, parseReply, partialText, spokenScreen, stripMarkers, type Command, type Screen } from "@/lib/voice/screen";
+import { cleanRaw, normalizeText, parseReply, spokenScreen, stripMarkers, type Command, type Screen } from "@/lib/voice/screen";
 import { resolveGatewayModel } from "@/lib/ai/models";
 import { useApprovals } from "@/lib/cooksy/console";
 import { Button } from "@/components/ui/button";
-import { KitchenPanel, LifecyclePanel, PagedScreen, ProfilePanel, Waveform } from "@/components/console-panels";
+import { KitchenPanel, LifecyclePanel, PagedScreen, Waveform } from "@/components/console-panels";
 import darkCodersLogo from "@/assets/darkcoders-logo.png";
 import spatialRoom from "@/assets/spatial-room.jpg";
 import { ACCENTS, clampTheme, useApplyTheme, useTheme, type Accent } from "@/lib/settings/theme";
-const XrChat = lazy(() => import("@/components/xr-chat"));
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -94,11 +91,10 @@ function VoiceConsole() {
   const messagesRef = useRef<Message[]>([]);
   const reasoningRef = useRef("");
   const stepsRef = useRef<RunStep[]>([]);
-  const [plans] = usePlans();
   const [runOptions] = useRunOptions();
   const [voice, setVoice] = useVoiceSettings();
-  const settingsRef = useRef({ plans, runOptions, voice });
-  settingsRef.current = { plans, runOptions, voice };
+  const settingsRef = useRef({ runOptions, voice });
+  settingsRef.current = { runOptions, voice };
   const [speaking, setSpeaking] = useState(false);
   const [standby, setStandby] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -327,9 +323,8 @@ function VoiceConsole() {
       });
   }, [messages, runAgent]);
 
-  const [view, setView] = useState<"talk" | "kitchen" | "plan" | "run">("talk");
+  const [view, setView] = useState<"talk" | "kitchen" | "run">("talk");
   const [spatial, setSpatial] = useState(false);
-  const [headset, setHeadset] = useState(false);
   const [, setTheme] = useTheme();
   useApplyTheme();
   const busy = Boolean(run) && run?.stage !== "error";
@@ -368,9 +363,9 @@ function VoiceConsole() {
         setSpatial(v === "spatial"); setView("talk");
         return `${v === "spatial" ? "Spatial" : "Console"} view on`;
       case "show_tab":
-        if (v !== "talk" && v !== "kitchen" && v !== "plan" && v !== "run") return null;
+        if (v !== "talk" && v !== "kitchen" && v !== "run") return null;
         setSpatial(false); setView(v);
-        return `Showing ${v === "kitchen" ? "Kitchen" : v === "plan" ? "Models & plan" : v === "run" ? "Run" : "Talk"}`;
+        return `Showing ${v === "kitchen" ? "Kitchen" : v === "run" ? "Run" : "Talk"}`;
       case "set_agent": {
         const roster = getAgents();
         const agent = roster[v];
@@ -397,7 +392,6 @@ function VoiceConsole() {
         setTheme((p) => { const next = clampTheme({ ...p, [key]: Number(m[2]) }); applied = next[key]; return next; });
         return `${key === "glass" ? "Glass opacity" : key === "blur" ? "Glass blur" : "Corner roundness"} ${applied || m[2]}`;
       }
-      case "open_headset": setSpatial(true); setView("talk"); setHeadset(true); return "Headset view opened";
       case "open_settings": setSettingsOpen(true); return "General settings opened";
       case "close_settings": setSettingsOpen(false); return "General settings closed";
       case "standby":
@@ -487,7 +481,6 @@ function VoiceConsole() {
                 </button>
               ))}
             </div>
-            <CloudSync />
             <Button variant="outline" size="icon" aria-label={spatial ? "Switch to console view" : "Switch to spatial view"} title={spatial ? "Console view" : "Spatial view"} aria-pressed={spatial} onClick={() => { setSpatial((current) => !current); setView("talk"); }} className={`glass size-10 shrink-0 rounded-full ${spatial ? "border-primary/60 text-primary" : ""}`}>
               {spatial ? <PanelsTopLeft className="size-4" /> : <ScanFace className="size-4" />}
             </Button>
@@ -504,18 +497,16 @@ function VoiceConsole() {
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 gap-4 px-3 py-3 pb-24 sm:px-4 sm:py-4 lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:pb-4 2xl:max-w-[1800px] 2xl:grid-cols-[340px_minmax(0,1fr)_360px] 2xl:gap-6 2xl:text-lg">
       {spatial && <><img src={spatialRoom} width={1536} height={1024} alt="Contemporary room backdrop for spatial chat" className="pointer-events-none fixed inset-0 -z-20 size-full object-cover" /><div aria-hidden className="spatial-veil pointer-events-none fixed inset-0 -z-10" /></>}
-      {/* One grid cell for the left column: Kitchen sits above the plan builder so
-          adding a fourth view never pushes the run/approval panel off the grid. */}
+      {/* One grid cell for the left column, so the kitchen panel never pushes the
+          run/approval panel out of the three-column layout. */}
       <div className="min-w-0 space-y-4 2xl:space-y-5">
         <KitchenPanel key={kitchenVersion} show={view === "kitchen"} />
-        <ProfilePanel show={view === "plan"} />
       </div>
       <div className={`${spatial ? "spatial-glass" : "panel"} ${view === "talk" ? "flex" : "hidden"} lg:flex min-h-[calc(100dvh-10rem)] lg:sticky lg:top-4 lg:h-[calc(100dvh-6.5rem)] lg:min-h-0 min-w-0 flex-col rounded-lg px-4 pb-6 pt-5 sm:px-8 2xl:px-12`}>
       <div className="contents">
       {spatial && <div className="mb-3 flex items-center justify-between gap-2 border-b border-border pb-3">
         <div className="min-w-0"><p className="dc-label text-[10px]">Spatial chat</p><p className="truncate text-sm font-semibold text-foreground">{getAgents()[voice.agent]?.label ?? "Cooksy"}</p></div>
         <select aria-label="Choose agent" value={voice.agent} onChange={(event) => setVoice((previous) => ({ ...previous, agent: event.target.value }))} className="max-w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-foreground lg:hidden">{Object.entries(getAgents()).map(([id, agent]) => <option value={id} key={id}>{agent.label}</option>)}</select>
-        <Button size="sm" variant="outline" onClick={() => setHeadset(true)} className="glass h-8 gap-1.5 rounded-full text-xs"><ScanFace className="size-3.5" />Headset</Button>
       </div>}
       <Waveform level={level} active={isRecording} stage={run?.stage} />
 
@@ -647,15 +638,14 @@ function VoiceConsole() {
         onDecide={decideApproval}
       />
       </div>
-      <nav aria-label="Console sections" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-background/55 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden">
-        {([["talk", "◉", "Talk"], ["kitchen", "❖", "Kitchen"], ["plan", "▤", "Plan"], ["run", "◷", "Run"]] as const).map(([key, glyph, label]) => (
+      <nav aria-label="Console sections" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-border bg-background/55 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden">
+        {([["talk", "◉", "Talk"], ["kitchen", "❖", "Kitchen"], ["run", "◷", "Run"]] as const).map(([key, glyph, label]) => (
           <button key={key} type="button" onClick={() => setView(key)} aria-current={view === key ? "page" : undefined}
             className={`flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs ${view === key ? "text-primary" : "text-muted-foreground"}`}>
             <span aria-hidden className="text-lg leading-none">{glyph}</span>{label}
           </button>
         ))}
       </nav>
-      {headset && <Suspense fallback={null}><XrChat messages={messages} recording={isRecording} busy={busy} activeAgentId={voice.agent} activePlan={plans.workflows.find((project) => project.id === plans.activeId)} liveText={run ? partialText(run.answer) || run.heard || STAGE_LABEL[run.stage] : ""} standby={standby} onSelectAgent={(agent) => setVoice((previous) => ({ ...previous, agent }))} onSendMessage={sendText} onToggleStandby={toggleStandby} onStop={stopAll} status={isRecording ? "Listening" : run ? STAGE_LABEL[run.stage] : "Ready"} onTalkStart={() => void startRecording()} onTalkEnd={() => void stopRecording()} onClose={() => setHeadset(false)} /></Suspense>}
       <GeneralSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
     </main>
   );

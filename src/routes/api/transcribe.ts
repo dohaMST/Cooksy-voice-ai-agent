@@ -31,10 +31,11 @@ export const Route = createFileRoute("/api/transcribe")({
         }
 
         try {
-          const upstream = await transcribe(file, request.signal);
-          const headers = new Headers({ "Cache-Control": "no-cache" });
-          headers.set("Content-Type", upstream.headers.get("Content-Type") ?? "text/event-stream");
-          return new Response(upstream.body, { status: upstream.status, headers });
+          const text = await transcribe(file, request.signal);
+          return new Response(JSON.stringify({ text }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+          });
         } catch (error) {
           if (request.signal.aborted) return new Response(null, { status: 499 });
           const message = error instanceof Error ? error.message : "Transcription failed";

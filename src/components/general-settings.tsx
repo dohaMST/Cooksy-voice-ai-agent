@@ -4,10 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ENGINE_LABEL, getAgents, speakWith, useVoiceSettings, type AsrEngine, type VoiceEngine } from "@/lib/settings/voice";
-import { ProviderSettings } from "@/components/provider-settings";
-import { ThemeControls } from "@/components/theme-panel";
-import { RunOptionsControls } from "@/components/telegram-run";
-import { CloudSync } from "@/components/cloud-sync";
+import { RunOptionsControls } from "@/components/chat-bubbles";
 
 const select = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary";
 
@@ -37,10 +34,7 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
         <Tabs defaultValue="voice">
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             <TabsTrigger value="voice" className="rounded-full px-3 py-1.5 text-xs">Voice &amp; Agents</TabsTrigger>
-            <TabsTrigger value="appearance" className="rounded-full px-3 py-1.5 text-xs">Appearance</TabsTrigger>
-            <TabsTrigger value="models" className="rounded-full px-3 py-1.5 text-xs">Models</TabsTrigger>
             <TabsTrigger value="run" className="rounded-full px-3 py-1.5 text-xs">Run options</TabsTrigger>
-            <TabsTrigger value="account" className="rounded-full px-3 py-1.5 text-xs">Account &amp; data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="voice" className="mt-4 space-y-5">
@@ -59,12 +53,13 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
             <Button variant="outline" disabled={preview} onClick={async () => { setPreview(true); setError(""); try { await speakWith(v, "Your voice is ready."); } catch (e) { setError(e instanceof Error ? e.message : "Voice preview failed"); } finally { setPreview(false); } }}>{preview ? "Playing…" : "Preview voice"}</Button>
             {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
             <label className="block space-y-1.5"><span className="text-sm font-semibold">Speech recognition (ASR)</span>
-              <select className={select} value={v.asrEngine} onChange={(e) => set((p) => ({ ...p, asrEngine: e.target.value as AsrEngine }))}><option value="cloud">Built-in cloud transcription</option><option value="local">Local · Whisper-compatible server</option></select>
+              <select className={select} value={v.asrEngine} onChange={(e) => set((p) => ({ ...p, asrEngine: e.target.value as AsrEngine }))}><option value="cloud">Cloud · Whisper transcription</option><option value="local">Local · Whisper-compatible server</option></select>
+              <span className="block text-xs text-muted-foreground">{v.asrEngine === "cloud" ? "Audio is sent to this app's own server, which calls the configured speech service. The API key never reaches the browser." : "Audio goes straight from this browser to your server."}</span>
             </label>
             {v.asrEngine === "local" && <div className="space-y-3">
               <label className="block space-y-1.5"><span className="text-sm font-semibold">ASR server base URL</span><input className={select} value={v.asrUrl} onChange={(e) => set((p) => ({ ...p, asrUrl: e.target.value }))} placeholder="http://localhost:8000/v1" /></label>
               <label className="block space-y-1.5"><span className="text-sm font-semibold">ASR model</span><input className={select} value={v.asrModel} onChange={(e) => set((p) => ({ ...p, asrModel: e.target.value }))} /></label>
-              <p className="text-xs text-severity-medium">Requires a running server with POST /audio/transcriptions and JSON text output. This site must be allowed by the server; headset localhost means the headset itself.</p>
+              <p className="text-xs text-severity-medium">Requires a running server with POST /audio/transcriptions and JSON text output. This site must be allowed by the server.</p>
             </div>}
             <details className="border-y border-border py-3"><summary className="cursor-pointer text-sm font-semibold">Open-source ASR · installation</summary><div className="mt-3 space-y-3 text-xs text-muted-foreground">
               <p>Not installed on this device. Installation needs your machine, available memory and explicit permission.</p>
@@ -97,22 +92,8 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
             )}
           </TabsContent>
 
-          <TabsContent value="appearance" className="mt-4">
-            <ThemeControls />
-          </TabsContent>
-
-          <TabsContent value="models" className="mt-4 space-y-4">
-            <ProviderSettings />
-            <p className="text-xs leading-relaxed text-muted-foreground">Settings and keys stay in this browser. Cloud keys are sent only to their own provider for each answer; Vault keys are fetched on the server and never shown here.</p>
-          </TabsContent>
-
           <TabsContent value="run" className="mt-4">
             <RunOptionsControls />
-          </TabsContent>
-
-          <TabsContent value="account" className="mt-4 space-y-4">
-            <CloudSync />
-            <p className="text-xs leading-relaxed text-muted-foreground">Signed in, your plans, voice settings, run options and theme are kept on your account and follow you to any device. Model API keys never leave this browser.</p>
           </TabsContent>
         </Tabs>
 

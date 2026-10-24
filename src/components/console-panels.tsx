@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, AudioLines, Brain, Cpu, ListTree, Mic, Plug, RefreshCw, Type, Volume2 } from "lucide-react";
-import { PlanBuilder } from "@/components/plan-builder";
-import { InlineKeyboard } from "@/components/telegram-run";
+import { InlineKeyboard } from "@/components/chat-bubbles";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NAV_LABEL, normalizeText, paginate, type ActionProposal, type Screen } from "@/lib/voice/screen";
@@ -112,15 +111,6 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="truncate font-mono text-foreground">{value}</span>
     </div>
   );
-}
-
-export function ProfilePanel({ show = false }: { show?: boolean }) {
-  return (
-    <aside className={`${show ? "block" : "hidden"} space-y-4 pb-24 lg:block lg:pb-0 2xl:space-y-5`}>
-      <PlanBuilder />
-    </aside>
-  );
-
 }
 
 const RISK_CLASS: Record<string, string> = {

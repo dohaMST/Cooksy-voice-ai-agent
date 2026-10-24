@@ -42,7 +42,38 @@ export const ENGINE_LABEL: Record<VoiceEngine, string> = {
 };
 
 const VOICE_KEY = "openclaw.voice";
-export const DEFAULT_VOICE: VoiceSettings = { agent: "cook", engine: "browser", rate: 1, standbyPause: 900, browserVoice: "", kokoroUrl: "http://localhost:8880", kokoroVoice: "af_heart", asrEngine: "local", asrUrl: "http://localhost:8000/v1", asrModel: "whisper-1" };
+
+/**
+ * The ASR server the retired default pointed at. Nothing has ever listened on
+ * that port, so every microphone turn failed with a bare network error.
+ *
+ * Settings persist in localStorage, so changing DEFAULT_VOICE alone would leave
+ * existing consoles broken. This repairs the exact legacy value once and then
+ * never runs again, so choosing "local" afterwards is still honoured.
+ */
+const LEGACY_ASR_URL = "http://localhost:8000/v1";
+const ASR_REPAIR_KEY = "openclaw.asr.repaired";
+
+function repairLegacyAsr(): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (window.localStorage.getItem(ASR_REPAIR_KEY)) return;
+    const raw = window.localStorage.getItem(VOICE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<VoiceSettings> | null;
+      if (saved?.asrEngine === "local" && saved.asrUrl === LEGACY_ASR_URL) {
+        window.localStorage.setItem(VOICE_KEY, JSON.stringify({ ...saved, asrEngine: "cloud" }));
+      }
+    }
+    window.localStorage.setItem(ASR_REPAIR_KEY, "1");
+  } catch {
+    /* Storage may be unavailable or hold a corrupt entry; the hook falls back to defaults. */
+  }
+}
+
+repairLegacyAsr();
+
+export const DEFAULT_VOICE: VoiceSettings = { agent: "cook", engine: "browser", rate: 1, standbyPause: 900, browserVoice: "", kokoroUrl: "http://localhost:8880", kokoroVoice: "af_heart", asrEngine: "cloud", asrUrl: "http://localhost:8000/v1", asrModel: "whisper-1" };
 
 /**
  * Saved voice settings, with a stale agent id healed to the default.

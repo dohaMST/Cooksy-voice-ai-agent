@@ -1,6 +1,6 @@
 export type Choice = { id: string; label: string; value: string };
 export type Nav = "back" | "cancel" | "home";
-export const COMMAND_NAMES = ["set_view", "show_tab", "set_agent", "set_speaking_rate", "open_settings", "close_settings", "standby", "set_accent", "set_style", "open_headset"] as const;
+export const COMMAND_NAMES = ["set_view", "show_tab", "set_agent", "set_speaking_rate", "open_settings", "close_settings", "standby", "set_accent", "set_style"] as const;
 export type Command = { name: (typeof COMMAND_NAMES)[number]; value: string };
 export type ActionProposal = {
   id: string;
