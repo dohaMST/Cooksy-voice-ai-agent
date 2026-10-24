@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAgentRouteImport } from './routes/api/agent'
+import { Route as ApiApprovalsRouteImport } from './routes/api/approvals'
+import { Route as ApiKitchenRouteImport } from './routes/api/kitchen'
 import { Route as ApiLlmRouteImport } from './routes/api/llm'
 import { Route as ApiSpeakRouteImport } from './routes/api/speak'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
@@ -23,6 +25,16 @@ const IndexRoute = IndexRouteImport.update({
 const ApiAgentRoute = ApiAgentRouteImport.update({
   id: '/api/agent',
   path: '/api/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiApprovalsRoute = ApiApprovalsRouteImport.update({
+  id: '/api/approvals',
+  path: '/api/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKitchenRoute = ApiKitchenRouteImport.update({
+  id: '/api/kitchen',
+  path: '/api/kitchen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLlmRoute = ApiLlmRouteImport.update({
@@ -44,6 +56,8 @@ const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/approvals': typeof ApiApprovalsRoute
+  '/api/kitchen': typeof ApiKitchenRoute
   '/api/llm': typeof ApiLlmRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/transcribe': typeof ApiTranscribeRoute
@@ -51,6 +65,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/approvals': typeof ApiApprovalsRoute
+  '/api/kitchen': typeof ApiKitchenRoute
   '/api/llm': typeof ApiLlmRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/transcribe': typeof ApiTranscribeRoute
@@ -59,19 +75,37 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/agent': typeof ApiAgentRoute
+  '/api/approvals': typeof ApiApprovalsRoute
+  '/api/kitchen': typeof ApiKitchenRoute
   '/api/llm': typeof ApiLlmRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/agent' | '/api/llm' | '/api/speak' | '/api/transcribe'
+  fullPaths:
+    | '/'
+    | '/api/agent'
+    | '/api/approvals'
+    | '/api/kitchen'
+    | '/api/llm'
+    | '/api/speak'
+    | '/api/transcribe'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/agent' | '/api/llm' | '/api/speak' | '/api/transcribe'
+  to:
+    | '/'
+    | '/api/agent'
+    | '/api/approvals'
+    | '/api/kitchen'
+    | '/api/llm'
+    | '/api/speak'
+    | '/api/transcribe'
   id:
     | '__root__'
     | '/'
     | '/api/agent'
+    | '/api/approvals'
+    | '/api/kitchen'
     | '/api/llm'
     | '/api/speak'
     | '/api/transcribe'
@@ -80,6 +114,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiAgentRoute: typeof ApiAgentRoute
+  ApiApprovalsRoute: typeof ApiApprovalsRoute
+  ApiKitchenRoute: typeof ApiKitchenRoute
   ApiLlmRoute: typeof ApiLlmRoute
   ApiSpeakRoute: typeof ApiSpeakRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
@@ -99,6 +135,20 @@ declare module '@tanstack/react-router' {
       path: '/api/agent'
       fullPath: '/api/agent'
       preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/approvals': {
+      id: '/api/approvals'
+      path: '/api/approvals'
+      fullPath: '/api/approvals'
+      preLoaderRoute: typeof ApiApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/kitchen': {
+      id: '/api/kitchen'
+      path: '/api/kitchen'
+      fullPath: '/api/kitchen'
+      preLoaderRoute: typeof ApiKitchenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/llm': {
@@ -128,6 +178,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiAgentRoute: ApiAgentRoute,
+  ApiApprovalsRoute: ApiApprovalsRoute,
+  ApiKitchenRoute: ApiKitchenRoute,
   ApiLlmRoute: ApiLlmRoute,
   ApiSpeakRoute: ApiSpeakRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,

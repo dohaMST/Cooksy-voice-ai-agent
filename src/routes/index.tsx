@@ -3,19 +3,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Square, Radio, SlidersHorizontal, Paperclip, SendHorizontal, X as XIcon, RotateCcw, ThumbsUp, ListTree, Volume2, AlertTriangle, PanelsTopLeft, ScanFace } from "lucide-react";
 import { recordWav, type Recording } from "@/lib/voice/record-wav";
-import { transcribeRecording, type Turn } from "@/lib/voice/agent";
+import { streamAgentAnswer, transcribeRecording, type Turn } from "@/lib/voice/agent";
 import { transcribeLocal } from "@/lib/voice/local-asr";
-import { cleanRaw, runProvider } from "@/lib/voice/providers-client";
-import { BUILTIN, KIND_INFO, findProvider, type Provider } from "@/lib/settings/providers";
-import { useProviders } from "@/components/provider-settings";
-import { focusModel, planPhases, planSummary, usePlans } from "@/components/plan-builder";
+import { usePlans } from "@/components/plan-builder";
 import { BotBubble, InlineKeyboard, StepLog, TypingDots, UserBubble, useRunOptions, type RunStep } from "@/components/telegram-run";
 import { getAgents, speakWith, useVoiceSettings } from "@/lib/settings/voice";
 import { GeneralSettings } from "@/components/general-settings";
 import { CloudSync } from "@/components/cloud-sync";
-import { parseScreen, partialText, spokenScreen, type ActionProposal, type Command, type Screen } from "@/lib/voice/screen";
+import { cleanRaw, normalizeText, parseReply, partialText, spokenScreen, stripMarkers, type Command, type Screen } from "@/lib/voice/screen";
+import { resolveGatewayModel } from "@/lib/ai/models";
+import { useApprovals } from "@/lib/cooksy/console";
 import { Button } from "@/components/ui/button";
-import { LifecyclePanel, PagedScreen, ProfilePanel, Waveform } from "@/components/console-panels";
+import { KitchenPanel, LifecyclePanel, PagedScreen, ProfilePanel, Waveform } from "@/components/console-panels";
 import darkCodersLogo from "@/assets/darkcoders-logo.png";
 import spatialRoom from "@/assets/spatial-room.jpg";
 import { ACCENTS, clampTheme, useApplyTheme, useTheme, type Accent } from "@/lib/settings/theme";
@@ -24,16 +23,16 @@ const XrChat = lazy(() => import("@/components/xr-chat"));
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "OpenClaw Voice Console — talk to your agent" },
+      { title: "Cooksy — talk to your kitchen agents" },
       {
         name: "description",
         content:
-          "Hold to talk, watch the agent move through received, thinking, planning and synthesizing, then hear the answer spoken back.",
+          "Hold to talk, watch the agent move through received, thinking and synthesizing, then hear the answer spoken back. Cook reads the kitchen; Planner proposes every change for your approval.",
       },
-      { property: "og:title", content: "OpenClaw Voice Console — talk to your agent" },
+      { property: "og:title", content: "Cooksy — talk to your kitchen agents" },
       {
         property: "og:description",
-        content: "A voice console that shows every stage of an agent run and speaks the final answer.",
+        content: "A voice console for a kitchen: pantry, week plan and shopping list, with every change gated by your approval.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -65,11 +64,7 @@ type Message = {
   at: number;
   steps?: RunStep[];
   sender?: string;
-  phase?: PhaseCard;
 };
-
-/** A plan phase shown in the chat; it waits for explicit approval before the agent works on it. */
-type PhaseCard = { index: number; total: number; title: string; status: string; model: string; state: "waiting" | "approved" | "skipped" | "stopped" };
 
 type Run = {
   stage: Stage;
@@ -99,12 +94,11 @@ function VoiceConsole() {
   const messagesRef = useRef<Message[]>([]);
   const reasoningRef = useRef("");
   const stepsRef = useRef<RunStep[]>([]);
-  const [providers] = useProviders();
   const [plans] = usePlans();
   const [runOptions] = useRunOptions();
   const [voice, setVoice] = useVoiceSettings();
-  const settingsRef = useRef({ providers, plans, runOptions, voice });
-  settingsRef.current = { providers, plans, runOptions, voice };
+  const settingsRef = useRef({ plans, runOptions, voice });
+  settingsRef.current = { plans, runOptions, voice };
   const [speaking, setSpeaking] = useState(false);
   const [standby, setStandby] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -113,6 +107,12 @@ function VoiceConsole() {
   const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const commandRef = useRef<(command: Command) => string | null>(() => null);
+
+  // The approval queue is the source of truth: the console polls cooksy-api through
+  // its own server route and never trusts the model's account of what is pending.
+  const { pending, error: approvalError, decide } = useApprovals();
+  const [busyApproval, setBusyApproval] = useState<string | null>(null);
+  const [kitchenVersion, setKitchenVersion] = useState(0);
 
   const addStep = useCallback((label: string, detail?: string, tone?: RunStep["tone"]) => {
     stepsRef.current = [...stepsRef.current, { label, at: Date.now(), ...(detail ? { detail } : {}), ...(tone ? { tone } : {}) }];
@@ -138,67 +138,52 @@ function VoiceConsole() {
   }, [isRecording]);
 
   const runAgent = useCallback(
-    async (history: Message[], signal: AbortSignal, override?: { model: string; task: string }) => {
-      const { providers: settings, plans: planState, runOptions: opts, voice: voiceSettings } = settingsRef.current;
+    async (history: Message[], signal: AbortSignal) => {
+      const { runOptions: opts, voice: voiceSettings } = settingsRef.current;
       setRun((current) => (current ? { ...current, stage: "planning" } : current));
       reasoningRef.current = "";
-      const turns: Turn[] = history.filter((m) => !m.phase).map(({ role, text }) => ({ role, text }));
-      const roster = getAgents(voiceSettings);
-      const persona = roster[voiceSettings.agent]?.persona ?? "";
-      const context = [persona && `Agent role (${voiceSettings.agent}): ${persona}`, planSummary(planState)].filter(Boolean).join("\n\n");
-      if (persona) addStep("Agent", roster[voiceSettings.agent]?.label);
-      if (context) addStep("Plan attached", planState.workflows.find((w) => w.id === planState.activeId)?.name);
-      const focus = override ?? focusModel(planState);
-      const picked = focus?.model ? settings.providers.find((p) => p.model === focus.model) : undefined;
-      if (focus?.model) addStep("Task model", picked ? `${focus.model} for ${focus.task}` : `${focus.model} isn't set up in Models yet — using the active model`, picked ? undefined : "warn");
-      const chain: Provider[] = [picked ?? findProvider(settings, settings.activeId) ?? BUILTIN];
-      const fb = findProvider(settings, settings.fallbackId);
-      if (fb && fb.id !== chain[0]!.id) chain.push(fb);
+      const turns: Turn[] = history.map(({ role, text }) => ({ role, text }));
 
-      let raw = "";
-      let used: Provider = chain[0]!;
-      for (let i = 0; i < chain.length; i++) {
-        used = chain[i]!;
-        addStep(i === 0 ? "Planning" : "Fallback", `${used.name} · ${used.model} (${KIND_INFO[used.kind].where})`, i === 0 ? undefined : "warn");
-        setRun((current) => (current ? { ...current, sender: used.name, answer: "" } : current));
-        let thinking = false;
-        let writing = false;
-        try {
-          raw = await runProvider(used, turns, context, {
-            onThinking: (reasoning) => {
-              if (!thinking) { thinking = true; addStep("Thinking"); }
-              reasoningRef.current = reasoning;
-              setRun((current) => current ? { ...current, reasoning, stage: current.stage === "streaming" ? current.stage : "thinking" } : current);
-            },
-            onAnswer: (text) => {
-              if (!writing) { writing = true; addStep("Writing reply"); }
-              if (opts.typing) setRun((current) => (current ? { ...current, answer: partialText(cleanRaw(text)), stage: "streaming" } : current));
-            },
-          }, signal);
-          break;
-        } catch (error) {
-          if (signal.aborted) throw error;
-          const message = error instanceof Error ? error.message : "Model failed";
-          addStep("Failed", message, "error");
-          if (i === chain.length - 1) throw error;
-        }
-      }
+      // One agent, picked in the console. No fallback and no silent swap: an
+      // unknown agent shows the error instead of answering as somebody else.
+      const agentLabel = getAgents()[voiceSettings.agent]?.label ?? voiceSettings.agent;
+      const model = resolveGatewayModel(voiceSettings.agent);
+      if (!model) throw new Error(`${agentLabel} is not an agent this console can reach. Pick Cook or Planner.`);
+      addStep("Agent", `${agentLabel} · ${model}`);
+      setRun((current) => (current ? { ...current, sender: agentLabel, answer: "" } : current));
 
-      // Blueprint: invalid planner output renders a safe error screen. Plain-text local replies are shown as-is.
-      const cleaned = cleanRaw(raw);
-      const screen: Screen = parseScreen(cleaned) ?? (used.kind !== "builtin" && !cleaned.startsWith("{")
-        ? { text: cleaned, choices: [], navigation: [] }
-        : { text: "That step could not be completed. Your last confirmed state is unchanged.", choices: [], navigation: ["home"] });
+      let thinking = false;
+      let writing = false;
+      const raw = await streamAgentAnswer(
+        turns,
+        {
+          onThinking: (reasoning) => {
+            if (!thinking) { thinking = true; addStep("Thinking"); }
+            reasoningRef.current = reasoning;
+            setRun((current) => current ? { ...current, reasoning, stage: current.stage === "streaming" ? current.stage : "thinking" } : current);
+          },
+          onAnswer: (text) => {
+            if (!writing) { writing = true; addStep("Writing reply"); }
+            if (opts.typing) setRun((current) => (current ? { ...current, answer: stripMarkers(cleanRaw(text)).text, stage: "streaming" } : current));
+          },
+        },
+        signal,
+        model,
+      );
+
+      // Prose is the contract: a plain spoken answer is a complete answer. A JSON
+      // screen is still honoured if the model volunteers one.
+      const screen: Screen = parseReply(raw);
       for (const command of screen.commands ?? []) {
         const result = commandRef.current(command);
         addStep(result ? "Applied" : "Not available", result ?? `${command.name} ${command.value}`.trim(), result ? undefined : "error");
       }
       if (screen.actionProposal) {
-        addStep("Approval required", `${screen.actionProposal.title} · ${screen.actionProposal.tool}`, "warn");
+        addStep("Approval waiting", `${normalizeText(screen.actionProposal.title)} · ${screen.actionProposal.tool}`, "warn");
       }
       addStep("Reply ready", `${screen.choices.length} button${screen.choices.length === 1 ? "" : "s"}`);
       if (opts.speak) addStep("Speaking");
-      appendMessage({ id: newId(), role: "assistant", text: screen.text, screen, reasoning: reasoningRef.current, at: Date.now(), steps: stepsRef.current, sender: used.name });
+      appendMessage({ id: newId(), role: "assistant", text: screen.text, screen, reasoning: reasoningRef.current, at: Date.now(), steps: stepsRef.current, sender: agentLabel });
       setRun(null);
       if (!opts.speak) return;
       try {
@@ -213,42 +198,6 @@ function VoiceConsole() {
     [addStep, appendMessage],
   );
 
-  const postPhase = useCallback((index: number) => {
-    const phases = planPhases(settingsRef.current.plans);
-    const ph = phases[index];
-    if (!ph) {
-      appendMessage({ id: newId(), role: "assistant", text: "All plan phases are done.", at: Date.now(), sender: "Plan" });
-      return;
-    }
-    appendMessage({
-      id: newId(), role: "assistant", at: Date.now(), sender: "Plan",
-      text: `Phase ${index + 1} of ${phases.length}: ${ph.title}`,
-      phase: { index, total: phases.length, title: ph.title, status: ph.status, model: ph.model ?? "gpt-6-astra", state: "waiting" },
-    });
-  }, [appendMessage]);
-
-  const decidePhase = useCallback((id: string, decision: "approved" | "skipped" | "stopped") => {
-    const msg = messagesRef.current.find((m) => m.id === id);
-    if (!msg?.phase || msg.phase.state !== "waiting" || run) return;
-    const card = { ...msg.phase, state: decision };
-    messagesRef.current = messagesRef.current.map((m) => (m.id === id ? { ...m, phase: card } : m));
-    setMessages(messagesRef.current);
-    if (decision === "stopped") return;
-    if (decision === "skipped") return postPhase(card.index + 1);
-    resetSteps();
-    addStep("Approved", `Phase ${card.index + 1}: ${card.title}`);
-    const history = appendMessage({ id: newId(), role: "user", text: `Approved. Work on phase ${card.index + 1}: ${card.title}. Give the concrete next steps.`, at: Date.now() });
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setRun({ stage: "planning", heard: "", answer: "", reasoning: "", steps: stepsRef.current });
-    void runAgent(history.filter((m) => !m.phase), controller.signal, { model: card.model, task: card.title })
-      .then(() => postPhase(card.index + 1))
-      .catch((error) => {
-        if (controller.signal.aborted) return setRun(null);
-        setRun({ stage: "error", heard: "", answer: "", reasoning: "", error: error instanceof Error ? error.message : "That phase failed", steps: stepsRef.current });
-      })
-      .finally(() => { abortRef.current = null; });
-  }, [addStep, appendMessage, postPhase, run, runAgent]);
 
   const sendText = useCallback(
     (text: string) => {
@@ -378,7 +327,7 @@ function VoiceConsole() {
       });
   }, [messages, runAgent]);
 
-  const [view, setView] = useState<"talk" | "plan" | "run">("talk");
+  const [view, setView] = useState<"talk" | "kitchen" | "plan" | "run">("talk");
   const [spatial, setSpatial] = useState(false);
   const [headset, setHeadset] = useState(false);
   const [, setTheme] = useTheme();
@@ -419,11 +368,11 @@ function VoiceConsole() {
         setSpatial(v === "spatial"); setView("talk");
         return `${v === "spatial" ? "Spatial" : "Console"} view on`;
       case "show_tab":
-        if (v !== "talk" && v !== "plan" && v !== "run") return null;
+        if (v !== "talk" && v !== "kitchen" && v !== "plan" && v !== "run") return null;
         setSpatial(false); setView(v);
-        return `Showing ${v === "plan" ? "Models & plan" : v === "run" ? "Run" : "Talk"}`;
+        return `Showing ${v === "kitchen" ? "Kitchen" : v === "plan" ? "Models & plan" : v === "run" ? "Run" : "Talk"}`;
       case "set_agent": {
-        const roster = getAgents(settingsRef.current.voice);
+        const roster = getAgents();
         const agent = roster[v];
         if (!agent) return null;
         setVoice((previous) => ({ ...previous, agent: v }));
@@ -465,6 +414,33 @@ function VoiceConsole() {
     setSpeaking(false);
   }, [stopRun]);
 
+  /**
+   * Sends the human's decision. cooksy-api is the only thing that executes, and
+   * its answer is the only outcome we report — nothing is assumed to have worked.
+   */
+  const decideApproval = useCallback(async (id: string, decision: "approve" | "deny") => {
+    setBusyApproval(id);
+    try {
+      const outcome = await decide(id, decision);
+      if (!outcome) return; // the hook already put the real error on screen
+      if (outcome.ok) {
+        setNotice(decision === "approve" ? "Approved and run. The kitchen lists now show the result." : "Denied. Nothing was changed.");
+        setKitchenVersion((n) => n + 1);
+      } else if (outcome.code === "failed") {
+        setNotice(`Approved, but the action failed: ${outcome.error ?? "no reason given"}`);
+        setKitchenVersion((n) => n + 1);
+      } else if (outcome.code === "not_found") {
+        setNotice("That approval no longer exists.");
+      } else if (outcome.code === "expired") {
+        setNotice("That approval expired before it was decided.");
+      } else {
+        setNotice(`Nothing changed — ${outcome.code.replace(/_/g, " ")}.`);
+      }
+    } finally {
+      setBusyApproval(null);
+    }
+  }, [decide]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "F9") { e.preventDefault(); toggleStandby(); }
@@ -498,6 +474,19 @@ function VoiceConsole() {
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center 2xl:max-w-[1800px] justify-between gap-3 px-3 py-3 sm:px-8">
           <img src={darkCodersLogo} alt="Dark Coders" className="h-6 w-auto max-w-[145px] object-contain sm:h-7 sm:max-w-none" />
           <div className="flex shrink-0 items-center gap-2">
+            <div role="group" aria-label="Agent" className="glass flex items-center rounded-full p-0.5">
+              {Object.entries(getAgents()).map(([id, agent]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={voice.agent === id}
+                  onClick={() => setVoice((previous) => ({ ...previous, agent: id }))}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${voice.agent === id ? "border-primary/60 text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                >
+                  {agent.label.replace("Cooksy ", "")}
+                </button>
+              ))}
+            </div>
             <CloudSync />
             <Button variant="outline" size="icon" aria-label={spatial ? "Switch to console view" : "Switch to spatial view"} title={spatial ? "Console view" : "Spatial view"} aria-pressed={spatial} onClick={() => { setSpatial((current) => !current); setView("talk"); }} className={`glass size-10 shrink-0 rounded-full ${spatial ? "border-primary/60 text-primary" : ""}`}>
               {spatial ? <PanelsTopLeft className="size-4" /> : <ScanFace className="size-4" />}
@@ -515,24 +504,22 @@ function VoiceConsole() {
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 gap-4 px-3 py-3 pb-24 sm:px-4 sm:py-4 lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:pb-4 2xl:max-w-[1800px] 2xl:grid-cols-[340px_minmax(0,1fr)_360px] 2xl:gap-6 2xl:text-lg">
       {spatial && <><img src={spatialRoom} width={1536} height={1024} alt="Contemporary room backdrop for spatial chat" className="pointer-events-none fixed inset-0 -z-20 size-full object-cover" /><div aria-hidden className="spatial-veil pointer-events-none fixed inset-0 -z-10" /></>}
-      <ProfilePanel show={view === "plan"} />
+      {/* One grid cell for the left column: Kitchen sits above the plan builder so
+          adding a fourth view never pushes the run/approval panel off the grid. */}
+      <div className="min-w-0 space-y-4 2xl:space-y-5">
+        <KitchenPanel key={kitchenVersion} show={view === "kitchen"} />
+        <ProfilePanel show={view === "plan"} />
+      </div>
       <div className={`${spatial ? "spatial-glass" : "panel"} ${view === "talk" ? "flex" : "hidden"} lg:flex min-h-[calc(100dvh-10rem)] lg:sticky lg:top-4 lg:h-[calc(100dvh-6.5rem)] lg:min-h-0 min-w-0 flex-col rounded-lg px-4 pb-6 pt-5 sm:px-8 2xl:px-12`}>
       <div className="contents">
       {spatial && <div className="mb-3 flex items-center justify-between gap-2 border-b border-border pb-3">
-        <div className="min-w-0"><p className="dc-label text-[10px]">Spatial chat</p><p className="truncate text-sm font-semibold text-foreground">{getAgents(voice)[voice.agent]?.label ?? "OpenClaw"}</p></div>
-        <select aria-label="Choose agent" value={voice.agent} onChange={(event) => setVoice((previous) => ({ ...previous, agent: event.target.value }))} className="max-w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-foreground lg:hidden">{Object.entries(getAgents(voice)).map(([id, agent]) => <option value={id} key={id}>{agent.label}</option>)}</select>
+        <div className="min-w-0"><p className="dc-label text-[10px]">Spatial chat</p><p className="truncate text-sm font-semibold text-foreground">{getAgents()[voice.agent]?.label ?? "Cooksy"}</p></div>
+        <select aria-label="Choose agent" value={voice.agent} onChange={(event) => setVoice((previous) => ({ ...previous, agent: event.target.value }))} className="max-w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-foreground lg:hidden">{Object.entries(getAgents()).map(([id, agent]) => <option value={id} key={id}>{agent.label}</option>)}</select>
         <Button size="sm" variant="outline" onClick={() => setHeadset(true)} className="glass h-8 gap-1.5 rounded-full text-xs"><ScanFace className="size-3.5" />Headset</Button>
       </div>}
       <Waveform level={level} active={isRecording} stage={run?.stage} />
 
       <div ref={scrollRef} className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-        {!run && (
-          <div className="flex justify-center">
-            <Button variant="outline" size="sm" className="h-7 rounded-full text-xs" onClick={() => postPhase(0)} disabled={busy || isRecording}>
-              <ListTree className="size-3.5" /> Walk through plan
-            </Button>
-          </div>
-        )}
         {messages.length === 0 && !run && (
            <div className={spatial ? "px-3 py-6 sm:px-5" : "glass rounded-2xl px-5 py-8 sm:px-7"}>
             <p className="dc-label">● Ready to listen</p>
@@ -545,28 +532,13 @@ function VoiceConsole() {
             <UserBubble key={message.id} text={message.text} at={message.at} />
           ) : (
             <div key={message.id} className="space-y-1.5">
-              <BotBubble sender={`OpenClaw${message.sender ? ` · ${message.sender}` : ""}`} at={message.at}>
-                {message.phase ? (
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-semibold">{message.text}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">Model · {message.phase.model} · Stage · {message.phase.status}</p>
-                    <p className={`font-mono text-[11px] ${message.phase.state === "waiting" ? "text-severity-medium" : message.phase.state === "approved" ? "text-primary" : "text-muted-foreground"}`}>
-                      {message.phase.state === "waiting" ? "⏸ Waiting for your approval" : message.phase.state === "approved" ? "✓ Approved" : message.phase.state === "skipped" ? "↷ Skipped" : "■ Stopped"}
-                    </p>
-                    {message.phase.state === "waiting" && (
-                      <InlineKeyboard buttons={[
-                        { key: "a", label: "Approve", onClick: () => decidePhase(message.id, "approved"), disabled: busy || isRecording },
-                        { key: "s", label: "Skip", onClick: () => decidePhase(message.id, "skipped"), disabled: busy || isRecording },
-                        { key: "x", label: "Stop", tone: "danger", onClick: () => decidePhase(message.id, "stopped"), disabled: busy || isRecording },
-                      ]} />
-                    )}
-                  </div>
-                ) : <PagedScreen
+              <BotBubble sender={`Cooksy${message.sender ? ` · ${message.sender}` : ""}`} at={message.at}>
+                <PagedScreen
                   text={message.text}
                   screen={message.id === messages[messages.length - 1]?.id ? message.screen : undefined}
                   disabled={busy || isRecording}
                   onSend={sendText}
-                />}
+                />
                 {message.steps && <StepLog steps={message.steps} defaultOpen={runOptions.expandSteps} />}
               </BotBubble>
               <div className="flex flex-wrap items-center gap-1.5 pl-1">
@@ -667,19 +639,16 @@ function VoiceConsole() {
         statusLabel={isRecording ? "Listening" : run ? STAGE_LABEL[run.stage] : "Idle"}
         turns={messages.length}
         show={view === "run"}
+        pending={pending}
         proposal={messages[messages.length - 1]?.role === "assistant" ? messages[messages.length - 1]?.screen?.actionProposal : null}
+        approvalError={approvalError}
+        busyId={busyApproval}
         disabled={busy || isRecording}
-        onDecideProposal={(proposal: ActionProposal, approved: boolean) => {
-          sendText(
-            approved
-              ? `Approved action [${proposal.id}] (${proposal.title} via ${proposal.tool}). Proceed and report the result.`
-              : `Denied action [${proposal.id}] (${proposal.title}). Do not execute.`,
-          );
-        }}
+        onDecide={decideApproval}
       />
       </div>
-      <nav aria-label="Console sections" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-border bg-background/55 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden">
-        {([["talk", "◉", "Talk"], ["plan", "▤", "Models & plan"], ["run", "◷", "Run"]] as const).map(([key, glyph, label]) => (
+      <nav aria-label="Console sections" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-background/55 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden">
+        {([["talk", "◉", "Talk"], ["kitchen", "❖", "Kitchen"], ["plan", "▤", "Plan"], ["run", "◷", "Run"]] as const).map(([key, glyph, label]) => (
           <button key={key} type="button" onClick={() => setView(key)} aria-current={view === key ? "page" : undefined}
             className={`flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs ${view === key ? "text-primary" : "text-muted-foreground"}`}>
             <span aria-hidden className="text-lg leading-none">{glyph}</span>{label}
@@ -706,7 +675,7 @@ const LIVE_LABEL: Record<Stage, string> = {
 function StatusCard({ run, onDismiss, onCancel }: { run: Run; onDismiss: () => void; onCancel: () => void }) {
   if (run.stage === "error") {
     return (
-      <BotBubble sender="OpenClaw" at={Date.now()}>
+      <BotBubble sender="Cooksy" at={Date.now()}>
         <p className="stage-chip text-destructive"><AlertTriangle className="size-3.5" /> Failed</p>
         <p className="mt-2 text-sm text-foreground">{run.error}</p>
         <StepLog steps={run.steps} defaultOpen />
@@ -715,7 +684,7 @@ function StatusCard({ run, onDismiss, onCancel }: { run: Run; onDismiss: () => v
     );
   }
   return (
-    <BotBubble sender={`OpenClaw${run.sender ? ` · ${run.sender}` : ""}`} at={Date.now()} edited={run.steps.length > 1}>
+    <BotBubble sender={`Cooksy${run.sender ? ` · ${run.sender}` : ""}`} at={Date.now()} edited={run.steps.length > 1}>
       {run.heard && run.stage === "transcribing" && <p className="font-mono text-xs text-muted-foreground">heard: <span className="text-foreground">{run.heard}</span></p>}
       {run.answer ? (
         <p className="caret whitespace-pre-wrap text-sm leading-relaxed text-foreground">{run.answer}</p>

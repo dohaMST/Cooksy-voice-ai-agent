@@ -1,21 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { OUTPUT_FORMAT, SYSTEM_PROMPT, planContextMessage } from "@/lib/voice/prompt";
+import { SYSTEM_PROMPT } from "@/lib/voice/prompt";
+import { resolveGatewayModel } from "@/lib/ai/models";
 
 type Turn = { role: "user" | "assistant"; text: string };
 
 export const Route = createFileRoute("/api/agent")({
   server: {
     handlers: {
+      /** Forwards one turn to OpenClaw as `openclaw/<agent>` and streams the screen JSON back. */
       POST: async ({ request }: { request: Request }) => {
         const { streamResponses } = await import("@/lib/ai/responses.server");
 
         let turns: Turn[] = [];
-        let context: string | undefined;
         let modelName: string | undefined;
         try {
-          const body = (await request.json()) as { turns?: Turn[]; context?: unknown; model?: unknown };
+          const body = (await request.json()) as { turns?: Turn[]; model?: unknown };
           if (Array.isArray(body.turns)) turns = body.turns.filter((t) => t && typeof t.text === "string");
-          if (typeof body.context === "string") context = body.context;
           if (typeof body.model === "string") modelName = body.model;
         } catch {
           turns = [];
@@ -27,18 +27,17 @@ export const Route = createFileRoute("/api/agent")({
           });
         }
 
-        const { resolveGatewayModel } = await import("@/lib/ai/models");
+        // Never swap in a different agent: an unknown name is an error the operator can see.
         const model = resolveGatewayModel(modelName);
         if (!model) {
-          return new Response(JSON.stringify({ error: `${modelName} isn't offered by the built-in AI service` }), {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ error: `${modelName ?? "No agent"} is not one of the agents this console can reach.` }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
         }
-        const plan = planContextMessage(context);
+
         const input: Record<string, unknown>[] = [
           { role: "system", content: [{ type: "input_text", text: SYSTEM_PROMPT }] },
-          ...(plan ? [{ role: "system", content: [{ type: "input_text", text: plan }] }] : []),
           ...turns.slice(-12).map((turn) => ({
             role: turn.role,
             content: [
@@ -49,7 +48,7 @@ export const Route = createFileRoute("/api/agent")({
           })),
         ];
 
-        return streamResponses(request, input, { text: { format: OUTPUT_FORMAT } }, model);
+        return streamResponses(request, input, {}, model);
       },
     },
   },

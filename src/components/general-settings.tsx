@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AGENTS, ENGINE_LABEL, getAgents, speakWith, useVoiceSettings, type AsrEngine, type VoiceEngine } from "@/lib/settings/voice";
+import { ENGINE_LABEL, getAgents, speakWith, useVoiceSettings, type AsrEngine, type VoiceEngine } from "@/lib/settings/voice";
 import { ProviderSettings } from "@/components/provider-settings";
 import { ThemeControls } from "@/components/theme-panel";
 import { RunOptionsControls } from "@/components/telegram-run";
@@ -15,13 +14,10 @@ const select = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 te
 /** One place for every preference: voice, appearance, models, run behaviour and saved data. */
 export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [v, set] = useVoiceSettings();
-  const agents = getAgents(v);
+  const agents = getAgents();
   const [voices, setVoices] = useState<string[]>([]);
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState("");
-  const [newAgentId, setNewAgentId] = useState("");
-  const [newAgentLabel, setNewAgentLabel] = useState("");
-  const [newAgentPersona, setNewAgentPersona] = useState("");
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const load = () => setVoices(speechSynthesis.getVoices().map((x) => x.name));
@@ -53,39 +49,6 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
                 {Object.entries(agents).map(([k, a]) => <option key={k} value={k}>{a.label} ({k})</option>)}
               </select>
             </label>
-            <details className="rounded-lg border border-border bg-surface/60 p-3">
-              <summary className="cursor-pointer text-xs font-semibold text-foreground">Register custom OpenClaw agent</summary>
-              <div className="mt-3 space-y-2">
-                <input className={select} placeholder="Agent ID (e.g. researcher, devops, finance)" value={newAgentId} onChange={(e) => setNewAgentId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} />
-                <input className={select} placeholder="Display label (e.g. Research Specialist)" value={newAgentLabel} onChange={(e) => setNewAgentLabel(e.target.value)} />
-                <textarea className={select} rows={2} placeholder="Agent role / OpenClaw skill instructions…" value={newAgentPersona} onChange={(e) => setNewAgentPersona(e.target.value)} />
-                <Button size="sm" variant="outline" disabled={!newAgentId.trim() || !newAgentLabel.trim()} onClick={() => {
-                  const id = newAgentId.trim();
-                  set((p) => ({
-                    ...p,
-                    agent: id,
-                    customAgents: { ...(p.customAgents ?? {}), [id]: { label: newAgentLabel.trim(), persona: newAgentPersona.trim() } },
-                  }));
-                  setNewAgentId(""); setNewAgentLabel(""); setNewAgentPersona("");
-                }}><Plus className="size-3.5" /> Add agent</Button>
-                {Object.keys(v.customAgents ?? {}).length > 0 && (
-                  <ul className="mt-2 space-y-1 border-t border-border pt-2">
-                    {Object.entries(v.customAgents ?? {}).map(([id, a]) => (
-                      <li key={id} className="flex items-center justify-between text-xs">
-                        <span className="font-mono">{a.label} ({id})</span>
-                        {!(id in AGENTS) && (
-                          <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => set((p) => {
-                            const next = { ...(p.customAgents ?? {}) };
-                            delete next[id];
-                            return { ...p, agent: p.agent === id ? "general" : p.agent, customAgents: next };
-                          })}><Trash2 className="size-3" /></Button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </details>
             <label className="block space-y-1.5"><span className="text-sm font-semibold">Voice engine</span>
               <select className={select} value={v.engine} onChange={(e) => set((p) => ({ ...p, engine: e.target.value as VoiceEngine }))}>
                 {(Object.keys(ENGINE_LABEL) as VoiceEngine[]).map((k) => <option key={k} value={k}>{ENGINE_LABEL[k]}</option>)}

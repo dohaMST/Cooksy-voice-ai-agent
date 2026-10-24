@@ -24,8 +24,8 @@ Prepared 2026-10-23 and executed 2026-10-24 on OpenClaw 2026.8.2. Facts below co
 
 ## Models and voice (all free to start)
 - Chat: `groq/openai/gpt-oss-120b`, fallback `groq/openai/gpt-oss-20b`. Needs the Groq plugin and `GROQ_API_KEY`.
-- Speech to text: Whisper on Groq (`whisper-large-v3-turbo`, also OpenClaw's default for Groq audio), called from the console's server route with the same key. Reported free limit is 28,800 audio seconds a day (from a comparison site, not Groq's page; check it). Whisper is MIT licensed, so a local copy (speaches, optional profile in `docker-compose.yml`) is the free offline alternative.
-- Text to speech: Kokoro in `docker-compose.yml`.
+- Speech to text: Whisper on Groq (`whisper-large-v3-turbo`, also OpenClaw's default for Groq audio), called from the console's server route with the same key. Reported free limit is 28,800 audio seconds a day (from a comparison site, not Groq's page; check it). `docker-compose.yml` runs MongoDB only; a local Whisper server (speaches) is a later, optional addition and is not in the stack yet.
+- Text to speech: Kokoro is a later, optional local server on `KOKORO_URL` (see `.env`). It is not in `docker-compose.yml` either — today the console speaks with the browser's own device voices.
 
 ## Start-up order
 1. `cp .env.example .env`, fill `MONGO_ROOT_PASSWORD` yourself. Then `docker compose up -d mongo`.

@@ -4,7 +4,7 @@ export const GATEWAY_BASE_URL = (
   "http://localhost:18789"
 ).replace(/\/$/, "");
 
-export const CHAT_MODEL = process.env["OPENCLAW_DEFAULT_MODEL"] || "openclaw/default";
+export const CHAT_MODEL = process.env["OPENCLAW_DEFAULT_MODEL"] || "openclaw/cook";
 export const TRANSCRIBE_MODEL = process.env["OPENCLAW_TRANSCRIBE_MODEL"] || "whisper-1";
 export const SPEECH_MODEL = process.env["OPENCLAW_SPEECH_MODEL"] || "tts-1";
 export const SPEECH_VOICE = process.env["OPENCLAW_SPEECH_VOICE"] || "alloy";
@@ -13,7 +13,9 @@ export const SPEECH_VOICE = process.env["OPENCLAW_SPEECH_VOICE"] || "alloy";
 export const MAX_AUDIO_BYTES = 13 * 1024 * 1024;
 
 export function getApiKey(): string {
-  return process.env["OPENCLAW_API_KEY"] || process.env["LOVABLE_API_KEY"] || "";
+  // The gateway authenticates with the token from `openclaw config set gateway.auth.token`.
+  // OPENCLAW_API_KEY is the older name; both are accepted so a stale .env still works.
+  return process.env["OPENCLAW_GATEWAY_TOKEN"] || process.env["OPENCLAW_API_KEY"] || "";
 }
 
 export function getGatewayHeaders(extra?: Record<string, string>): Record<string, string> {

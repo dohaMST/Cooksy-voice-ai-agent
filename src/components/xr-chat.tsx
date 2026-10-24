@@ -51,7 +51,7 @@ function SpaceRoom({ p }: { p: Palette }) {
 }
 function AgentRail({ p, activeAgentId, onSelectAgent, busy }: Pick<Props, "activeAgentId" | "onSelectAgent" | "busy"> & { p: Palette }) {
   const [voice] = useVoiceSettings();
-  const agents = getAgents(voice);
+  const agents = getAgents();
   return <group position={[-2.06, 1.65, -2.65]} rotation-y={0.25}>
     <Glass width={1.18} height={1.9} p={p} />
     <Label position={[-0.48, 0.82, 0.04]} color={p.accent} width={1}>AGENTS</Label>
@@ -110,7 +110,7 @@ function TalkControl({ p, recording, busy, onTalkStart, onTalkEnd }: Pick<Props,
 }
 function RoomScene({ props, p, page, setPage }: { props: Props; p: Palette; page: number; setPage: (page: number) => void }) {
   const [voice] = useVoiceSettings();
-  const agents = getAgents(voice);
+  const agents = getAgents();
   const session = useXR((s) => s.session);
   const { camera, size } = useThree();
   const compact = size.width < 600 && !session;
