@@ -1,6 +1,6 @@
 {
-  "$comment": "Contract for the zafran MCP server (api/mcp-server.mjs). One tool = one zafran-api route. Gated tools NEVER write: they store a pending approval and return approval_required. Approve/Deny are not tools; they are HTTP routes only the browser calls.",
-  "server": "zafran",
+  "$comment": "Contract for the cooksy MCP server (api/mcp-server.mjs). One tool = one cooksy-api route. Gated tools NEVER write: they store a pending approval and return approval_required. Approve/Deny are not tools; they are HTTP routes only the browser calls.",
+  "server": "cooksy",
   "tools": [
     { "name": "pantry_list", "gated": false, "agents": ["cook", "planner"],
       "description": "List pantry items, optionally filtered by name.",
@@ -46,7 +46,7 @@
       "input": { "type": "object", "properties": { "from": { "type": "string", "format": "date" }, "to": { "type": "string", "format": "date" } }, "additionalProperties": false },
       "route": "POST /shopping/propose-build" },
     { "name": "shopping_export", "gated": true, "risk": "low", "agents": ["planner"],
-      "description": "Write the list to a text file in the Zafran data folder. Needs approval. Sends nothing to anyone.",
+      "description": "Write the list to a text file in the Cooksy data folder. Needs approval. Sends nothing to anyone.",
       "input": { "type": "object", "properties": {}, "additionalProperties": false },
       "route": "POST /shopping/propose-export" }
   ],

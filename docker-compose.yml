@@ -1,0 +1,31 @@
+# Cooksy local services.
+#
+# MongoDB is bound to loopback only, so it is never reachable from the LAN.
+# The named volume means `docker compose down` does NOT wipe the week plan you
+# built; only `down -v` does, which is the deliberate destructive form.
+#
+# No TTL index is created here or anywhere else. Pending approvals expire via
+# the API's sweeper / on-read check, so an expired approval is audited instead
+# of being silently deleted before its outcome is recorded.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: cooksy-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: cooksy
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}
+    volumes:
+      - cooksy-mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  cooksy-mongo:

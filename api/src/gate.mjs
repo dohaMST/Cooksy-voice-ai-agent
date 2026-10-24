@@ -107,7 +107,12 @@ export function createApprovalGate(store, executor, summarize) {
     },
 
     async pendingList() {
-      return store.find("approvals", { status: "pending" });
+      // Overdue rows are excluded so the console never shows a dead card. The
+      // sweeper then flips them to `expired` and writes the audit entry.
+      return store.find("approvals", {
+        status: "pending",
+        expiresAt: { $gte: nowMs() },
+      });
     },
 
     /**
@@ -179,6 +184,25 @@ export function createApprovalGate(store, executor, summarize) {
 
     async activitySince(since = 0) {
       return store.find("audit_log", { at: { $gt: Number(since) || 0 } });
+    },
+
+    /**
+     * Expire every overdue pending approval. This is the deliberate replacement
+     * for a MongoDB TTL index: TTL would delete the row the moment it aged out,
+     * destroying the record before its outcome (approved / denied / expired)
+     * could ever be audited. Here the row survives and gets an audit entry.
+     * Returns the number newly expired.
+     */
+    async sweep() {
+      const overdue = await store.find("approvals", {
+        status: "pending",
+        expiresAt: { $lt: nowMs() },
+      });
+      let expired = 0;
+      for (const row of overdue) {
+        if (await expireIfDue(row._id)) expired++;
+      }
+      return expired;
     },
 
     writeAudit,

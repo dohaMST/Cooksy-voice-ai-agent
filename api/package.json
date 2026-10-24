@@ -1,12 +1,13 @@
 {
-  "name": "zafran-api",
+  "name": "cooksy-api",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Zafran local API: pantry, week plan, shopping list, recipes, and the approval gate. Loopback only.",
+  "description": "Cooksy local API: pantry, week plan, shopping list, recipes, and the approval gate. Loopback only.",
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test"
+    "start": "node --env-file=../.env src/server.mjs",
+    "test": "node --test",
+    "test:integration": "node --env-file=../.env --test test/mongo.integration.test.mjs"
   },
   "engines": { "node": ">=20" },
   "dependencies": {

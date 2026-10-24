@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 
-const raw = readFileSync(new URL("../zafran-tools.json", import.meta.url), "utf8");
+const raw = readFileSync(new URL("../cooksy-tools.json", import.meta.url), "utf8");
 const contract = JSON.parse(raw);
 
 export const TOOLS = contract.tools;
@@ -17,6 +17,25 @@ export function toolByName(name) {
 }
 export const GATED = TOOLS.filter((t) => t.gated);
 export const READ_ONLY = TOOLS.filter((t) => !t.gated);
+
+/**
+ * Map an HTTP "METHOD /path" to its tool, built from each tool's `route` field.
+ * Derived naming would get this wrong: /plan/propose-set is `plan_set_meal`,
+ * and /plan/propose-clear is `plan_clear_day`, so the handler must consult the
+ * contract rather than guess.
+ */
+function normalizePath(p) {
+  return p.replace(/\/:([A-Za-z_]+)/g, "/*");
+}
+const byRoute = new Map(
+  TOOLS.map((t) => {
+    const [method, pattern] = t.route.split(" ");
+    return [`${method} ${normalizePath(pattern)}`, t];
+  }),
+);
+export function toolByRoute(method, path) {
+  return byRoute.get(`${method} ${normalizePath(path)}`);
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -40,7 +40,7 @@ export function summarize(tool, args) {
     case "shopping_export":
       return {
         title: "Export the shopping list",
-        summary: "Writes the list to a text file in the Zafran data folder. Sends nothing.",
+        summary: "Writes the list to a text file in the Cooksy data folder. Sends nothing.",
       };
     default:
       return { title: tool, summary: "" };

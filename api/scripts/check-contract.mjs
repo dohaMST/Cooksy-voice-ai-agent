@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-const c = JSON.parse(readFileSync(new URL("../zafran-tools.json", import.meta.url), "utf8"));
+const c = JSON.parse(readFileSync(new URL("../cooksy-tools.json", import.meta.url), "utf8"));
 const read = c.tools.filter((t) => !t.gated);
 const gated = c.tools.filter((t) => t.gated);
 console.log("tools:", c.tools.length, "read:", read.length, "gated:", gated.length);

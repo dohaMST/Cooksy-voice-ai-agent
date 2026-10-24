@@ -102,7 +102,7 @@ export function createExecutors(store, { dataDir, resolveRecipes }) {
       await mkdir(dataDir, { recursive: true });
       const file = join(dataDir, "shopping-list.txt");
       const lines = [
-        "Zafran shopping list",
+        "Cooksy shopping list",
         `Exported ${new Date().toISOString()}`,
         "",
         ...(items.length
