@@ -3,9 +3,29 @@ import { useCallback, useSyncExternalStore } from "react";
 const listeners = new Map<string, Set<() => void>>();
 const cache = new Map<string, { raw: string | null; value: unknown }>();
 
+/**
+ * localStorage is not always there: a browser can disable it, and private modes
+ * have thrown from `getItem` or `setItem` in the past. A settings read happens
+ * during render, so a throw here would take the whole page down with it.
+ */
+function storage(): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  const raw = window.localStorage.getItem(key);
+  const store = storage();
+  if (!store) return fallback;
+  let raw: string | null = null;
+  try {
+    raw = store.getItem(key);
+  } catch {
+    return fallback;
+  }
   const hit = cache.get(key);
   if (hit && hit.raw === raw) return hit.value as T;
   let value: T = fallback;
@@ -34,7 +54,14 @@ export function onLocalWrite(fn: (key: string, value: unknown) => void) {
 }
 
 export function writeLocal<T>(key: string, value: T, opts?: { silent?: boolean }) {
-  window.localStorage.setItem(key, JSON.stringify(value));
+  const store = storage();
+  try {
+    store?.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    // A full quota or a locked-down browser must not break the turn that is
+    // saving a preference; the warning keeps the failure visible in devtools.
+    console.warn(`Could not save ${key} to local storage.`, error);
+  }
   listeners.get(key)?.forEach((fn) => fn());
   if (!opts?.silent) writeHooks.forEach((fn) => fn(key, value));
 }

@@ -231,6 +231,35 @@ test("the sweeper expires overdue rows and audits them", async () => {
   assert.equal(await gate.sweep(), 0, "sweeping twice must not double-count");
 });
 
+test("the sweeper fails an approval abandoned mid-execution instead of orphaning it", async () => {
+  const { store, gate } = makeGate();
+  const out = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });
+
+  // Simulate a crash between the atomic pending -> executing step and the outcome write.
+  await store.updateOne(
+    "approvals",
+    { _id: out.approval.id },
+    {
+      $set: {
+        status: "executing",
+        decidedAt: Date.now() - 3 * 60 * 1000,
+        actor: "browser",
+      },
+    },
+  );
+
+  await gate.sweep();
+
+  const row = await store.findOne("approvals", { _id: out.approval.id });
+  assert.equal(row.status, "failed");
+  assert.match(row.error, /interrupted/i);
+  assert.equal(
+    (await store.find("audit_log", { approvalId: out.approval.id }))[0].event,
+    "approval.failed",
+  );
+  assert.equal((await gate.pendingList()).length, 0, "a failed row must not come back as a card");
+});
+
 test("pendingList hides overdue rows and never exposes dead cards", async () => {
   const { store, gate } = makeGate();
   const live = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });

@@ -23,6 +23,8 @@ function makeApp() {
       approverToken: APPROVER,
       dataDir: "data-test",
       resolveRecipes: async (ids) => ids.map((id) => ({ id, name: `Recipe ${id}`, thumb: null })),
+      // Every id resolves here; the unknown-recipe path has its own test below.
+      lookupRecipe: async (id) => ({ id, name: `Recipe ${id}`, thumb: null }),
     }),
   };
 }
@@ -198,6 +200,45 @@ test("propose with a bad meal enum is rejected", async () => {
     body: { date: "2026-10-24", meal: "brunch", recipeId: "52771" },
   });
   assert.equal(r.status, 400);
+});
+
+test("a plan proposal for a recipe that does not exist is refused and stores nothing", async () => {
+  const store = createMemoryStore();
+  const app = createApp({
+    store,
+    agentToken: AGENT,
+    approverToken: APPROVER,
+    dataDir: "data-test",
+    resolveRecipes: async (ids) => ids.map((id) => ({ id, name: `Recipe ${id}`, thumb: null })),
+    lookupRecipe: async () => null,
+  });
+  const r = await call(app, "POST", "/plan/propose-set", {
+    token: AGENT,
+    body: { date: "2026-10-24", meal: "dinner", recipeId: "1" },
+  });
+  assert.equal(r.status, 400);
+  assert.match(r.body.error, /No recipe with id 1/);
+  assert.equal(await store.count("approvals", {}), 0, "a refused proposal must not create a card");
+});
+
+test("a plan proposal survives an unreachable recipe service as a 502, not a bad id", async () => {
+  const store = createMemoryStore();
+  const app = createApp({
+    store,
+    agentToken: AGENT,
+    approverToken: APPROVER,
+    dataDir: "data-test",
+    resolveRecipes: async (ids) => ids.map((id) => ({ id, name: `Recipe ${id}`, thumb: null })),
+    lookupRecipe: async () => {
+      throw new Error("The recipe service did not answer.");
+    },
+  });
+  const r = await call(app, "POST", "/plan/propose-set", {
+    token: AGENT,
+    body: { date: "2026-10-24", meal: "dinner", recipeId: "52771" },
+  });
+  assert.equal(r.status, 502);
+  assert.equal(await store.count("approvals", {}), 0);
 });
 
 test("validateArgs rejects a path-like recipe id", () => {

@@ -33,7 +33,7 @@ Prepared 2026-10-23 and executed 2026-10-24 on OpenClaw 2026.8.2. Facts below co
 
 1. `cp .env.example .env`, fill `MONGO_ROOT_PASSWORD` yourself. Then `docker compose up -d` (MongoDB plus the Kokoro voice service; `up -d mongo` if you only want the database).
 2. Install the Groq plugin: `openclaw plugins install @openclaw/groq-provider`, then put `GROQ_API_KEY=...` in `~/.openclaw/.env` (the gateway reads it from there). Do not paste the key in chat.
-3. Validate the patch without writing: `openclaw config patch --file openclaw/openclaw.patch.json5 --dry-run`.
+3. Point the patch at this checkout: `node scripts/localize-openclaw.mjs` rewrites the four absolute paths inside `openclaw.patch.json5` (`--check` exits 1 if they point elsewhere). Then validate without writing: `openclaw config patch --file openclaw/openclaw.patch.json5 --dry-run`.
 4. Apply it: `openclaw config patch --file openclaw/openclaw.patch.json5`. Then set the gateway token: `openclaw config set gateway.auth.token <a long random value>`.
 5. Check agents and skills: `openclaw agents list`, `openclaw skills check --agent cook`.
 6. ~~Build `api/` (cooksy-api and `api/mcp-server.mjs`) from `tools/cooksy-tools.json`.~~ **Done in Phase 1.**

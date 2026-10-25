@@ -47,8 +47,16 @@ async function postDecision(id: string, decision: "approve" | "deny"): Promise<D
   return (await response.json()) as DecisionOutcome;
 }
 
-async function getKitchen(view: KitchenView): Promise<KitchenData> {
-  const response = await fetch(`/api/kitchen?view=${view}`, {
+async function getKitchen(
+  view: KitchenView,
+  range?: { from: string; to: string },
+): Promise<KitchenData> {
+  const query = new URLSearchParams({ view });
+  if (view === "plan" && range) {
+    query.set("from", range.from);
+    query.set("to", range.to);
+  }
+  const response = await fetch(`/api/kitchen?${query.toString()}`, {
     headers: CONSOLE_HEADERS,
     cache: "no-store",
   });
@@ -113,14 +121,20 @@ export function useApprovals(enabled = true) {
 }
 
 /** Reads one kitchen list, with a manual refresh for after an approval runs. */
-export function useKitchen(view: KitchenView, enabled = true) {
+export function useKitchen(
+  view: KitchenView,
+  enabled = true,
+  range?: { from: string; to: string },
+) {
   const [data, setData] = useState<KitchenData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const aliveRef = useRef(true);
+  const from = range?.from ?? null;
+  const to = range?.to ?? null;
 
   const refresh = useCallback(async () => {
     try {
-      const next = await getKitchen(view);
+      const next = await getKitchen(view, from && to ? { from, to } : undefined);
       if (!aliveRef.current) return;
       setData(next);
       setError(null);
@@ -128,7 +142,7 @@ export function useKitchen(view: KitchenView, enabled = true) {
       if (!aliveRef.current) return;
       setError(cause instanceof Error ? cause.message : "That list could not be read.");
     }
-  }, [view]);
+  }, [view, from, to]);
 
   useEffect(() => {
     aliveRef.current = true;

@@ -10,6 +10,7 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { useApplyTheme } from "../lib/settings/theme";
 
 function NotFoundComponent() {
   return (
@@ -121,6 +122,9 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
+  // The accent, glass and radius are written on <html>, so they must be applied
+  // on every route: the landing page reads the same tokens the console saves.
+  useApplyTheme();
   return (
     <>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

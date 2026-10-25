@@ -54,7 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ACCENTS, clampTheme, useApplyTheme, useTheme, type Accent } from "@/lib/settings/theme";
+import { ACCENTS, clampTheme, useTheme, type Accent } from "@/lib/settings/theme";
 
 export const Route = createFileRoute("/console")({
   head: () => ({
@@ -338,7 +338,7 @@ function VoiceConsole() {
           abortRef.current = null;
         });
     },
-    [appendMessage, isRecording, run, runAgent],
+    [addStep, appendMessage, isRecording, run, runAgent],
   );
 
   const finishTurn = useCallback(
@@ -406,6 +406,10 @@ function VoiceConsole() {
       }
     } catch {
       startingRef.current = false;
+      // Standby would otherwise re-request the microphone every 250 ms for as long
+      // as the tab is open: the failed run clears `busy`, which re-arms the effect.
+      // One loud error and standby off beats an invisible retry loop.
+      if (standby) setStandby(false);
       setRun({
         stage: "error",
         heard: "",
@@ -415,7 +419,7 @@ function VoiceConsole() {
         error: "I need microphone access to hear you. Allow it and try again.",
       });
     }
-  }, [isRecording, run]);
+  }, [isRecording, run, standby]);
 
   const stopRecording = useCallback(async () => {
     const recording = recordingRef.current;
@@ -484,7 +488,6 @@ function VoiceConsole() {
 
   const [view, setView] = useState<View>("talk");
   const [, setTheme] = useTheme();
-  useApplyTheme();
   const busy = Boolean(run) && run?.stage !== "error";
 
   // Standby: listen hands-free, send after the chosen pause of silence, and wait while the agent talks.
@@ -529,10 +532,15 @@ function VoiceConsole() {
   commandRef.current = (command) => {
     const v = command.value.trim().toLowerCase();
     switch (command.name) {
-      case "show_tab":
-        if (v !== "talk" && v !== "kitchen" && v !== "run") return null;
-        setView(v);
-        return `Showing ${v === "kitchen" ? "Kitchen" : v === "run" ? "Run" : "Talk"}`;
+      case "show_tab": {
+        // `plan` is the Week tab inside Kitchen; the console has no separate view for it.
+        const target = v === "plan" ? "kitchen" : v;
+        if (target !== "talk" && target !== "kitchen" && target !== "run") return null;
+        setView(target);
+        return v === "plan"
+          ? "Showing the week plan"
+          : `Showing ${target === "kitchen" ? "Kitchen" : target === "run" ? "Run" : "Talk"}`;
+      }
       case "set_agent": {
         const roster = getAgents();
         const agent = roster[v];
@@ -579,6 +587,15 @@ function VoiceConsole() {
 
   const stopAll = useCallback(() => {
     stopRun();
+    // Escape has to stop the microphone too, or the recorder keeps the device open
+    // after the run it was feeding is gone.
+    if (recordingRef.current) {
+      recordingRef.current.cancel();
+      recordingRef.current = null;
+      releaseRef.current = false;
+      setIsRecording(false);
+      setLevel(0);
+    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) speechSynthesis.cancel();
     setSpeaking(false);
   }, [stopRun]);
@@ -648,7 +665,18 @@ function VoiceConsole() {
     if (!file) return;
     if (file.size > 200_000)
       return showNotice("warn", "That file is too large. Attach a text file under 200 KB.");
-    const text = await file.text();
+    let text: string;
+    try {
+      text = await file.text();
+    } catch (error) {
+      // A file that cannot be read is a real failure, not an empty attachment.
+      return showNotice(
+        "error",
+        error instanceof Error
+          ? `That file could not be read: ${error.message}`
+          : "That file could not be read.",
+      );
+    }
     if (text.includes("\u0000"))
       return showNotice("warn", "Only text files can be attached (txt, md, json, csv, yaml, log).");
     setAttachment({ name: file.name, text: text.slice(0, 20_000) });
@@ -661,6 +689,12 @@ function VoiceConsole() {
 
   return (
     <main className="relative flex min-h-dvh w-full text-foreground">
+      <a
+        href="#console-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        Skip to the console
+      </a>
       <EmberField />
       <div aria-hidden className="ember-haze pointer-events-none fixed inset-0 z-0" />
 
@@ -796,7 +830,11 @@ function VoiceConsole() {
 
         {/* One scroll container for every view: Talk scrolls its stream, Kitchen and
             Run scroll their own content, and the floating nav never covers it. */}
-        <div className="scroll-thin mx-auto flex w-full max-w-4xl min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4 pt-4 sm:px-6 lg:pb-6">
+        <div
+          id="console-main"
+          tabIndex={-1}
+          className="scroll-thin mx-auto flex w-full max-w-4xl min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4 pt-4 outline-none sm:px-6 lg:pb-6"
+        >
           {view === "talk" && (
             <section className="flex min-h-0 flex-1 flex-col">
               {empty ? (
@@ -828,96 +866,110 @@ function VoiceConsole() {
               ) : (
                 <>
                   <RunStrip level={level} active={isRecording} stage={run?.stage} />
+                  <h1 className="sr-only">Cooksy voice console</h1>
                   <div
                     ref={scrollRef}
                     className="scroll-thin mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto pb-2 pr-1"
                   >
-                    {messages.map((message) =>
-                      message.role === "user" ? (
-                        <UserBubble key={message.id} text={message.text} at={message.at} />
-                      ) : (
-                        <div key={message.id} className="space-y-1.5">
-                          <BotBubble
-                            sender={`Cooksy${message.sender ? ` · ${message.sender}` : ""}`}
-                            at={message.at}
-                          >
-                            <PagedScreen
-                              text={message.text}
-                              screen={
-                                message.id === messages[messages.length - 1]?.id
-                                  ? message.screen
-                                  : undefined
-                              }
-                              disabled={busy || isRecording}
-                              onSend={sendText}
-                            />
-                            {message.steps && (
-                              <StepLog steps={message.steps} defaultOpen={runOptions.expandSteps} />
-                            )}
-                          </BotBubble>
-                          <div className="flex flex-wrap items-center gap-1 pl-1">
-                            <button
-                              type="button"
-                              aria-pressed={Boolean(message.liked)}
-                              onClick={() => {
-                                messagesRef.current = messagesRef.current.map((item) =>
-                                  item.id === message.id ? { ...item, liked: !item.liked } : item,
-                                );
-                                setMessages(messagesRef.current);
-                              }}
-                              className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] transition-colors hover:bg-white/[0.06] ${message.liked ? "text-primary" : "text-muted-foreground"}`}
+                    {/* role=log announces each finished turn once; the live status card
+                        sits outside it so streaming text is not read out on every token. */}
+                    <div
+                      role="log"
+                      aria-live="polite"
+                      aria-relevant="additions"
+                      aria-label="Conversation"
+                      className="space-y-4"
+                    >
+                      {messages.map((message) =>
+                        message.role === "user" ? (
+                          <UserBubble key={message.id} text={message.text} at={message.at} />
+                        ) : (
+                          <div key={message.id} className="space-y-1.5">
+                            <BotBubble
+                              sender={`Cooksy${message.sender ? ` · ${message.sender}` : ""}`}
+                              at={message.at}
                             >
-                              <ThumbsUp className="size-3" aria-hidden /> Useful
-                            </button>
-                            <button
-                              type="button"
-                              onClick={retry}
-                              disabled={busy}
-                              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
-                            >
-                              <RotateCcw className="size-3" aria-hidden /> Retry
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setOpenDetails((current) =>
-                                  current === message.id ? null : message.id,
-                                )
-                              }
-                              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-                            >
-                              <ListTree className="size-3" aria-hidden /> Thinking
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSpeaking(true);
-                                void speakWith(voice, message.text)
-                                  .catch((e: unknown) =>
-                                    showNotice(
-                                      "error",
-                                      e instanceof Error ? e.message : "The voice engine failed",
-                                    ),
+                              <PagedScreen
+                                text={message.text}
+                                screen={
+                                  message.id === messages[messages.length - 1]?.id
+                                    ? message.screen
+                                    : undefined
+                                }
+                                disabled={busy || isRecording}
+                                onSend={sendText}
+                              />
+                              {message.steps && (
+                                <StepLog
+                                  steps={message.steps}
+                                  defaultOpen={runOptions.expandSteps}
+                                />
+                              )}
+                            </BotBubble>
+                            <div className="flex flex-wrap items-center gap-1 pl-1">
+                              <button
+                                type="button"
+                                aria-pressed={Boolean(message.liked)}
+                                onClick={() => {
+                                  messagesRef.current = messagesRef.current.map((item) =>
+                                    item.id === message.id ? { ...item, liked: !item.liked } : item,
+                                  );
+                                  setMessages(messagesRef.current);
+                                }}
+                                className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] transition-colors hover:bg-white/[0.06] ${message.liked ? "text-primary" : "text-muted-foreground"}`}
+                              >
+                                <ThumbsUp className="size-3" aria-hidden /> Useful
+                              </button>
+                              <button
+                                type="button"
+                                onClick={retry}
+                                disabled={busy}
+                                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
+                              >
+                                <RotateCcw className="size-3" aria-hidden /> Retry
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setOpenDetails((current) =>
+                                    current === message.id ? null : message.id,
                                   )
-                                  .finally(() => setSpeaking(false));
-                              }}
-                              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-                            >
-                              <Volume2 className="size-3" aria-hidden /> Replay
-                            </button>
-                          </div>
-                          {openDetails === message.id && (
-                            <div className="panel p-4">
-                              <p className="dc-label">Agent thinking</p>
-                              <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
-                                {message.reasoning?.trim() ||
-                                  "No thinking summary was returned for this answer."}
-                              </p>
+                                }
+                                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                              >
+                                <ListTree className="size-3" aria-hidden /> Thinking
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSpeaking(true);
+                                  void speakWith(voice, message.text)
+                                    .catch((e: unknown) =>
+                                      showNotice(
+                                        "error",
+                                        e instanceof Error ? e.message : "The voice engine failed",
+                                      ),
+                                    )
+                                    .finally(() => setSpeaking(false));
+                                }}
+                                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                              >
+                                <Volume2 className="size-3" aria-hidden /> Replay
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      ),
-                    )}
+                            {openDetails === message.id && (
+                              <div className="panel p-4">
+                                <p className="dc-label">Agent thinking</p>
+                                <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
+                                  {message.reasoning?.trim() ||
+                                    "No thinking summary was returned for this answer."}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ),
+                      )}
+                    </div>
 
                     {run && (
                       <StatusCard run={run} onDismiss={() => setRun(null)} onCancel={stopRun} />
@@ -1044,8 +1096,16 @@ function VoiceConsole() {
                       onPointerUp={() => void stopRecording()}
                       onPointerLeave={() => isRecording && void stopRecording()}
                       onPointerCancel={() => isRecording && void stopRecording()}
+                      // A keyboard activation fires a click with detail 0 and no pointer
+                      // events, so Space/Enter would otherwise do nothing at all. Pointer
+                      // clicks are already handled above and are ignored here.
+                      onClick={(e) => {
+                        if (e.detail !== 0) return;
+                        if (isRecording) void stopRecording();
+                        else void startRecording();
+                      }}
                       disabled={busy}
-                      aria-label={isRecording ? "Release to send" : "Hold to talk"}
+                      aria-label={isRecording ? "Stop recording and send" : "Start recording"}
                       aria-pressed={isRecording}
                       className="mic-button relative z-10 grid size-11 place-items-center rounded-full active:scale-95 disabled:opacity-40"
                     >
@@ -1098,7 +1158,7 @@ function VoiceConsole() {
               <p className="mt-1 text-sm text-muted-foreground">
                 What you have, what is planned, and what still has to be bought.
               </p>
-              <KitchenView key={kitchenVersion} />
+              <KitchenView version={kitchenVersion} />
             </div>
           )}
 

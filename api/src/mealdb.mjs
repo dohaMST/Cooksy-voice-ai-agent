@@ -99,4 +99,19 @@ export async function lookupSummaries(ids, signal) {
   return out;
 }
 
+/**
+ * One id, with the two failure modes kept apart: `null` means TheMealDB answered
+ * and has no such recipe, while a thrown UpstreamError means it did not answer at
+ * all. Proposing a plan entry needs that distinction — a typo in the id is the
+ * agent's mistake, a 502 is not.
+ */
+export async function lookupOne(id, signal) {
+  const data = await fetchJson(
+    `${BASE}/lookup.php?i=${encodeURIComponent(id)}`,
+    withTimeout(signal),
+  );
+  const meal = data.meals?.[0];
+  return meal ? trimMeal(meal) : null;
+}
+
 export { UpstreamError };

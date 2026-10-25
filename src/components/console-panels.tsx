@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   AudioLines,
   Brain,
+  ChevronLeft,
+  ChevronRight,
   Cpu,
   ListTree,
   Mic,
@@ -22,6 +24,7 @@ import {
   type Screen,
 } from "@/lib/voice/screen";
 import { ENGINE_LABEL, getAgents, useVoiceSettings } from "@/lib/settings/voice";
+import { formatRange, weekRange } from "@/lib/cooksy/week";
 import { useKitchen } from "@/lib/cooksy/console";
 import type { ApprovalRecord, PantryItem, PlanEntry, ShoppingItem } from "@/lib/cooksy/types";
 
@@ -424,7 +427,9 @@ export function RunView({
             <span className="font-mono text-[10px] text-muted-foreground">127.0.0.1:18789</span>
           </div>
           <div className="mt-2">
-            <Row label="Agent" value={agentLabel} />
+            {/* The agent answering now — not necessarily the one that proposed a
+                change waiting in the approval card. */}
+            <Row label="Selected agent" value={agentLabel} />
             <Row label="Route" value={`/api/agent → openclaw/${voice.agent}`} />
           </div>
         </section>
@@ -611,11 +616,29 @@ function ShoppingList({
  * All three lists are read together because the metric cards summarise all three;
  * the console is small enough that one extra pair of requests is cheaper than a
  * card that shows a number the tab next to it disagrees with.
+ *
+ * The week is navigable: an approval can write a meal for a date in another week,
+ * and a list that only ever showed "this week" made that write invisible.
  */
-export function KitchenView() {
+export function KitchenView({ version = 0 }: { version?: number }) {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const range = weekRange(weekOffset);
+
   const pantry = useKitchen("pantry");
-  const plan = useKitchen("plan");
+  const plan = useKitchen("plan", true, range);
   const shopping = useKitchen("shopping");
+
+  const { refresh: refreshPlan } = plan;
+  const { refresh: refreshPantry } = pantry;
+  const { refresh: refreshShopping } = shopping;
+  // After an approval runs, re-read all three without resetting the week the
+  // operator is looking at (a remount via `key` used to jump back to today).
+  useEffect(() => {
+    if (!version) return;
+    void refreshPantry();
+    void refreshPlan();
+    void refreshShopping();
+  }, [version, refreshPantry, refreshPlan, refreshShopping]);
 
   const pantryItems = pantry.data?.view === "pantry" ? pantry.data.items : null;
   const planEntries = plan.data?.view === "plan" ? plan.data.entries : null;
@@ -670,6 +693,42 @@ export function KitchenView() {
             />
           </TabsContent>
           <TabsContent value="plan" className="mt-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="dc-label text-[10px]">
+                  {weekOffset === 0 ? "This week" : weekOffset > 0 ? "Later" : "Earlier"}
+                </p>
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {formatRange(range.from, range.to)}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset((current) => current - 1)}
+                  aria-label="Previous week"
+                  className="grid size-9 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <ChevronLeft className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset(0)}
+                  disabled={weekOffset === 0}
+                  className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset((current) => current + 1)}
+                  aria-label="Next week"
+                  className="grid size-9 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <ChevronRight className="size-4" aria-hidden />
+                </button>
+              </div>
+            </div>
             <PlanList
               entries={planEntries}
               error={plan.error}

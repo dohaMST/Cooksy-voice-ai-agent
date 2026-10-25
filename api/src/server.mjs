@@ -67,7 +67,14 @@ function parseBody(req) {
  * Build the app (routes + gate) against a Store. Exported so the tests can
  * drive it with no network listener and no live MongoDB.
  */
-export function createApp({ store, agentToken, approverToken, dataDir = "data", resolveRecipes }) {
+export function createApp({
+  store,
+  agentToken,
+  approverToken,
+  dataDir = "data",
+  resolveRecipes,
+  lookupRecipe = mealdb.lookupOne,
+}) {
   const resolve = resolveRecipes ?? mealdb.lookupSummaries;
   const executors = createExecutors(store, { dataDir, resolveRecipes: resolve });
   const gate = createApprovalGate(
@@ -198,6 +205,27 @@ export function createApp({ store, agentToken, approverToken, dataDir = "data", 
         const body = await parseBody(req);
         const v = validateArgs(def.input, body);
         if (!v.ok) return json(res, 400, { error: v.error });
+
+        // A plan slot is only useful if its recipe exists: otherwise the executor
+        // stores `recipeName: null` and shopping_build silently skips the meal.
+        // Check before a card is ever shown, and keep "no such recipe" apart from
+        // "the recipe service is down".
+        if (def.name === "plan_set_meal") {
+          let recipe;
+          try {
+            recipe = await lookupRecipe(v.value.recipeId);
+          } catch (e) {
+            return json(res, 502, {
+              error: e instanceof Error ? e.message : "The recipe service did not answer.",
+            });
+          }
+          if (!recipe) {
+            return json(res, 400, {
+              error: `No recipe with id ${v.value.recipeId}. Search recipes first, then propose an id from the results.`,
+            });
+          }
+        }
+
         const out = await gate.propose({ tool: def.name, args: v.value, risk: def.risk });
         return json(res, 200, out);
       }

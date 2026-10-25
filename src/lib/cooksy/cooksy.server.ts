@@ -166,9 +166,18 @@ export async function decideApproval(
 }
 
 /** Pantry, week plan or shopping list — read with the read-only token. */
-export function readKitchen(view: KitchenView): Promise<KitchenData> {
+export function readKitchen(
+  view: KitchenView,
+  range: { from?: string; to?: string } = {},
+): Promise<KitchenData> {
   if (view === "plan") {
-    return call<{ from: string; to: string; entries: PlanEntry[] }>("/plan", {
+    const query = new URLSearchParams();
+    if (range.from && range.to) {
+      query.set("from", range.from);
+      query.set("to", range.to);
+    }
+    const suffix = query.size ? `?${query.toString()}` : "";
+    return call<{ from: string; to: string; entries: PlanEntry[] }>(`/plan${suffix}`, {
       kind: "agent",
     }).then(({ from, to, entries }) => ({ view: "plan" as const, from, to, entries }));
   }

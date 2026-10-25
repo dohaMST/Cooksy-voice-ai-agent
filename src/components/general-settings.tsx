@@ -19,6 +19,7 @@ import {
   type VoiceEngine,
 } from "@/lib/settings/voice";
 import { RunOptionsControls } from "@/components/chat-bubbles";
+import { ACCENTS, THEME_LIMITS, clampTheme, useTheme, type Accent } from "@/lib/settings/theme";
 
 const select =
   "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary";
@@ -32,6 +33,7 @@ export function GeneralSettings({
   onOpenChange: (o: boolean) => void;
 }) {
   const [v, set] = useVoiceSettings();
+  const [theme, setTheme] = useTheme();
   const agents = getAgents();
   const [voices, setVoices] = useState<string[]>([]);
   const [preview, setPreview] = useState(false);
@@ -62,6 +64,9 @@ export function GeneralSettings({
             </TabsTrigger>
             <TabsTrigger value="run" className="rounded-full px-3 py-1.5 text-xs">
               Run options
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="rounded-full px-3 py-1.5 text-xs">
+              Appearance
             </TabsTrigger>
           </TabsList>
 
@@ -275,6 +280,74 @@ export function GeneralSettings({
 
           <TabsContent value="run" className="mt-4">
             <RunOptionsControls />
+          </TabsContent>
+
+          <TabsContent value="appearance" className="mt-4 space-y-5">
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold">Accent</legend>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(ACCENTS) as Accent[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={theme.accent === key}
+                    onClick={() => setTheme((previous) => ({ ...previous, accent: key }))}
+                    className={`inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors ${
+                      theme.accent === key
+                        ? "border-primary/50 bg-primary/10 text-foreground"
+                        : "border-white/[0.08] bg-white/[0.04] text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="size-3 rounded-full"
+                      style={{ background: ACCENTS[key].color }}
+                    />
+                    {ACCENTS[key].label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Glass blur — {theme.blur}px</p>
+              <Slider
+                min={THEME_LIMITS.blur[0]}
+                max={THEME_LIMITS.blur[1]}
+                step={1}
+                value={[theme.blur]}
+                onValueChange={([n]) => setTheme((p) => clampTheme({ ...p, blur: n ?? p.blur }))}
+                aria-label="Glass blur"
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Glass opacity — {theme.glass}%</p>
+              <Slider
+                min={THEME_LIMITS.glass[0]}
+                max={THEME_LIMITS.glass[1]}
+                step={1}
+                value={[theme.glass]}
+                onValueChange={([n]) => setTheme((p) => clampTheme({ ...p, glass: n ?? p.glass }))}
+                aria-label="Glass opacity"
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Corner roundness — {theme.radius}px</p>
+              <Slider
+                min={THEME_LIMITS.radius[0]}
+                max={THEME_LIMITS.radius[1]}
+                step={1}
+                value={[theme.radius]}
+                onValueChange={([n]) =>
+                  setTheme((p) => clampTheme({ ...p, radius: n ?? p.radius }))
+                }
+                aria-label="Corner roundness"
+              />
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Saved in this browser. The accent retints borders, glows and the background field from
+              one value, so nothing has to be reloaded.
+            </p>
           </TabsContent>
         </Tabs>
 

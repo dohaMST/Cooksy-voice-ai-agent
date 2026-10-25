@@ -20,6 +20,14 @@ import { randomBytes } from "node:crypto";
 
 const APPROVAL_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * How long a row may sit in `executing` before the sweeper calls it failed.
+ * A crash between the atomic `pending -> executing` transition and the outcome
+ * write would otherwise leave that approval unusable for ever: it is no longer
+ * pending, so nothing retries it, and no card ever shows again.
+ */
+const EXECUTING_GRACE_MS = 2 * 60 * 1000;
+
 function nowMs() {
   return Date.now();
 }
@@ -202,6 +210,34 @@ export function createApprovalGate(store, executor, summarize) {
       for (const row of overdue) {
         if (await expireIfDue(row._id)) expired++;
       }
+
+      // Rows abandoned mid-execution (a crash or a killed process). Marked failed
+      // with the reason, so the audit trail explains why the action never landed.
+      const stuck = await store.find("approvals", {
+        status: "executing",
+        decidedAt: { $lt: nowMs() - EXECUTING_GRACE_MS },
+      });
+      for (const row of stuck) {
+        const res = await store.findOneAndUpdate(
+          "approvals",
+          { _id: row._id, status: "executing" },
+          {
+            $set: {
+              status: "failed",
+              error: "The action was interrupted before it finished.",
+            },
+          },
+        );
+        if (res.matched) {
+          await writeAudit({
+            actor: "system",
+            event: "approval.failed",
+            approvalId: row._id,
+            detail: "Interrupted while executing.",
+          });
+        }
+      }
+
       return expired;
     },
 
