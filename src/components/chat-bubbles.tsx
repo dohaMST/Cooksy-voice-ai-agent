@@ -89,7 +89,7 @@ export function RunOptionsControls() {
   const [o, set] = useRunOptions();
   const row = (key: keyof RunOptions, label: string, hint: string) => (
     <label className="flex items-start gap-2 py-1.5 text-sm">
-      <input type="checkbox" className="mt-0.5 accent-primary" checked={o[key]} onChange={(e) => set((p) => ({ ...p, [key]: e.target.checked }))} />
+      <input type="checkbox" id={`run-${key}`} name={key} className="mt-0.5 accent-primary" checked={o[key]} onChange={(e) => set((p) => ({ ...p, [key]: e.target.checked }))} />
       <span><span className="text-foreground">{label}</span><span className="block text-xs text-muted-foreground">{hint}</span></span>
     </label>
   );

@@ -39,12 +39,12 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
 
           <TabsContent value="voice" className="mt-4 space-y-5">
             <label className="block space-y-1.5"><span className="text-sm font-semibold">Active OpenClaw Agent</span>
-              <select className={select} value={v.agent} onChange={(e) => set((p) => ({ ...p, agent: e.target.value }))}>
+              <select id="agent" name="agent" className={select} value={v.agent} onChange={(e) => set((p) => ({ ...p, agent: e.target.value }))}>
                 {Object.entries(agents).map(([k, a]) => <option key={k} value={k}>{a.label} ({k})</option>)}
               </select>
             </label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold">Voice engine</span>
-              <select className={select} value={v.engine} onChange={(e) => set((p) => ({ ...p, engine: e.target.value as VoiceEngine }))}>
+              <select id="engine" name="engine" className={select} value={v.engine} onChange={(e) => set((p) => ({ ...p, engine: e.target.value as VoiceEngine }))}>
                 {(Object.keys(ENGINE_LABEL) as VoiceEngine[]).map((k) => <option key={k} value={k}>{ENGINE_LABEL[k]}</option>)}
               </select>
               <span className="block text-xs text-muted-foreground">No silent fallback: a failed engine shows an error, it never swaps voices behind your back.</span>
@@ -52,12 +52,12 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
             <Button variant="outline" disabled={preview} onClick={async () => { setPreview(true); setError(""); try { await speakWith(v, "Your voice is ready."); } catch (e) { setError(e instanceof Error ? e.message : "Voice preview failed"); } finally { setPreview(false); } }}>{preview ? "Playing…" : "Preview voice"}</Button>
             {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
             <label className="block space-y-1.5"><span className="text-sm font-semibold">Speech recognition (ASR)</span>
-              <select className={select} value={v.asrEngine} onChange={(e) => set((p) => ({ ...p, asrEngine: e.target.value as AsrEngine }))}><option value="cloud">Cloud · Whisper transcription</option><option value="local">Local · Whisper-compatible server</option></select>
+              <select id="asr-engine" name="asrEngine" className={select} value={v.asrEngine} onChange={(e) => set((p) => ({ ...p, asrEngine: e.target.value as AsrEngine }))}><option value="cloud">Cloud · Whisper transcription</option><option value="local">Local · Whisper-compatible server</option></select>
               <span className="block text-xs text-muted-foreground">{v.asrEngine === "cloud" ? "Audio is sent to this app's own server, which calls the configured speech service. The API key never reaches the browser." : "Audio goes straight from this browser to your server."}</span>
             </label>
             {v.asrEngine === "local" && <div className="space-y-3">
-              <label className="block space-y-1.5"><span className="text-sm font-semibold">ASR server base URL</span><input className={select} value={v.asrUrl} onChange={(e) => set((p) => ({ ...p, asrUrl: e.target.value }))} placeholder="http://localhost:8000/v1" /></label>
-              <label className="block space-y-1.5"><span className="text-sm font-semibold">ASR model</span><input className={select} value={v.asrModel} onChange={(e) => set((p) => ({ ...p, asrModel: e.target.value }))} /></label>
+              <label className="block space-y-1.5"><span className="text-sm font-semibold">ASR server base URL</span><input id="asr-url" name="asrUrl" className={select} value={v.asrUrl} onChange={(e) => set((p) => ({ ...p, asrUrl: e.target.value }))} placeholder="http://localhost:8000/v1" /></label>
+              <label className="block space-y-1.5"><span className="text-sm font-semibold">ASR model</span><input id="asr-model" name="asrModel" className={select} value={v.asrModel} onChange={(e) => set((p) => ({ ...p, asrModel: e.target.value }))} /></label>
               <p className="text-xs text-severity-medium">Requires a running server with POST /audio/transcriptions and JSON text output. This site must be allowed by the server.</p>
             </div>}
             <details className="border-y border-border py-3"><summary className="cursor-pointer text-sm font-semibold">Open-source ASR · installation</summary><div className="mt-3 space-y-3 text-xs text-muted-foreground">
@@ -75,7 +75,7 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
             </div>
             {v.engine === "browser" && (
               <label className="block space-y-1.5"><span className="text-sm font-semibold">Browser voice character</span>
-                <select className={select} value={v.browserVoice} onChange={(e) => set((p) => ({ ...p, browserVoice: e.target.value }))}>
+                <select id="browser-voice" name="browserVoice" className={select} value={v.browserVoice} onChange={(e) => set((p) => ({ ...p, browserVoice: e.target.value }))}>
                   <option value="">Device default</option>
                   {voices.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
@@ -84,9 +84,9 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
             {v.engine === "kokoro" && (
               <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
                 <label className="space-y-1.5"><span className="text-sm font-semibold">Kokoro server</span>
-                  <input className={select} value={v.kokoroUrl} onChange={(e) => set((p) => ({ ...p, kokoroUrl: e.target.value }))} placeholder="http://localhost:8880" /></label>
+                  <input id="kokoro-url" name="kokoroUrl" className={select} value={v.kokoroUrl} onChange={(e) => set((p) => ({ ...p, kokoroUrl: e.target.value }))} placeholder="http://localhost:8880" /></label>
                 <label className="space-y-1.5"><span className="text-sm font-semibold">Voice</span>
-                  <input className={select} value={v.kokoroVoice} onChange={(e) => set((p) => ({ ...p, kokoroVoice: e.target.value }))} /></label>
+                  <input id="kokoro-voice" name="kokoroVoice" className={select} value={v.kokoroVoice} onChange={(e) => set((p) => ({ ...p, kokoroVoice: e.target.value }))} /></label>
               </div>
             )}
           </TabsContent>
