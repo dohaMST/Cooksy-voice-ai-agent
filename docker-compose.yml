@@ -1,6 +1,6 @@
 # Cooksy local services.
 #
-# MongoDB is bound to loopback only, so it is never reachable from the LAN.
+# Every service is bound to loopback only, so none of it is reachable from the LAN.
 # The named volume means `docker compose down` does NOT wipe the week plan you
 # built; only `down -v` does, which is the deliberate destructive form.
 #
@@ -26,6 +26,26 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # Kokoro speech synthesis. Bound to loopback: the browser reaches it directly
+  # and nothing on the LAN can. Only used when the Kokoro voice engine is chosen
+  # in Settings; device voices remain the default.
+  #
+  # This is the CPU image, which runs slower than realtime on a laptop. The
+  # console streams the audio and starts playing before the whole reply has
+  # been synthesized, so the wait is bounded by the first chunk, not the last.
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0
+    container_name: cooksy-kokoro
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8880:8880"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request as u; u.urlopen('http://localhost:8880/health', timeout=3)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
 volumes:
   cooksy-mongo:
