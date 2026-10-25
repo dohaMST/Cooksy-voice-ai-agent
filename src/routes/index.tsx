@@ -1,7 +1,7 @@
 import { unlockSpeaker } from "@/lib/voice/speak";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Square, Radio, SlidersHorizontal, Paperclip, SendHorizontal, X as XIcon, RotateCcw, ThumbsUp, ListTree, Volume2, AlertTriangle, PanelsTopLeft, ScanFace } from "lucide-react";
+import { Mic, Square, Radio, SlidersHorizontal, Paperclip, SendHorizontal, X as XIcon, RotateCcw, ThumbsUp, ListTree, Volume2, AlertTriangle } from "lucide-react";
 import { recordWav, type Recording } from "@/lib/voice/record-wav";
 import { streamAgentAnswer, transcribeRecording, type Turn } from "@/lib/voice/agent";
 import { transcribeLocal } from "@/lib/voice/local-asr";
@@ -14,7 +14,6 @@ import { useApprovals } from "@/lib/cooksy/console";
 import { Button } from "@/components/ui/button";
 import { KitchenPanel, LifecyclePanel, PagedScreen, Waveform } from "@/components/console-panels";
 import darkCodersLogo from "@/assets/darkcoders-logo.png";
-import spatialRoom from "@/assets/spatial-room.jpg";
 import { ACCENTS, clampTheme, useApplyTheme, useTheme, type Accent } from "@/lib/settings/theme";
 
 export const Route = createFileRoute("/")({
@@ -198,6 +197,9 @@ function VoiceConsole() {
   const sendText = useCallback(
     (text: string) => {
       if (run || isRecording) return;
+      // The reply is spoken long after this click, so unlock audio while we still
+      // have the gesture that browsers require.
+      unlockSpeaker();
       resetSteps();
       addStep("Received", "text message");
       const history = appendMessage({ id: newId(), role: "user", text, at: Date.now() });
@@ -324,7 +326,6 @@ function VoiceConsole() {
   }, [messages, runAgent]);
 
   const [view, setView] = useState<"talk" | "kitchen" | "run">("talk");
-  const [spatial, setSpatial] = useState(false);
   const [, setTheme] = useTheme();
   useApplyTheme();
   const busy = Boolean(run) && run?.stage !== "error";
@@ -358,13 +359,9 @@ function VoiceConsole() {
   commandRef.current = (command) => {
     const v = command.value.trim().toLowerCase();
     switch (command.name) {
-      case "set_view":
-        if (v !== "spatial" && v !== "console") return null;
-        setSpatial(v === "spatial"); setView("talk");
-        return `${v === "spatial" ? "Spatial" : "Console"} view on`;
       case "show_tab":
         if (v !== "talk" && v !== "kitchen" && v !== "run") return null;
-        setSpatial(false); setView(v);
+        setView(v);
         return `Showing ${v === "kitchen" ? "Kitchen" : v === "run" ? "Run" : "Talk"}`;
       case "set_agent": {
         const roster = getAgents();
@@ -463,7 +460,7 @@ function VoiceConsole() {
 
   return (
     <main className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-transparent text-foreground">
-      {!spatial && <div aria-hidden className="voice-grid pointer-events-none absolute inset-0 opacity-35" />}
+      <div aria-hidden className="voice-grid pointer-events-none absolute inset-0 opacity-35" />
       <header className="relative z-10 border-b border-white/10 bg-background/55 backdrop-blur-xl backdrop-saturate-150">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center 2xl:max-w-[1800px] justify-between gap-3 px-3 py-3 sm:px-8">
           <img src={darkCodersLogo} alt="Dark Coders" className="h-6 w-auto max-w-[145px] object-contain sm:h-7 sm:max-w-none" />
@@ -481,9 +478,6 @@ function VoiceConsole() {
                 </button>
               ))}
             </div>
-            <Button variant="outline" size="icon" aria-label={spatial ? "Switch to console view" : "Switch to spatial view"} title={spatial ? "Console view" : "Spatial view"} aria-pressed={spatial} onClick={() => { setSpatial((current) => !current); setView("talk"); }} className={`glass size-10 shrink-0 rounded-full ${spatial ? "border-primary/60 text-primary" : ""}`}>
-              {spatial ? <PanelsTopLeft className="size-4" /> : <ScanFace className="size-4" />}
-            </Button>
             <Button variant="outline" onClick={toggleStandby} aria-pressed={standby} title="Standby (F9)"
               className={`glass h-10 gap-2 rounded-full px-3 ${standby ? "border-primary/60 text-primary" : "text-foreground"}`}>
               <Radio className={`size-4 ${standby ? "animate-pulse" : ""}`} /> {standby ? "Standing by" : "Standby"}
@@ -496,23 +490,18 @@ function VoiceConsole() {
       </header>
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 gap-4 px-3 py-3 pb-24 sm:px-4 sm:py-4 lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:pb-4 2xl:max-w-[1800px] 2xl:grid-cols-[340px_minmax(0,1fr)_360px] 2xl:gap-6 2xl:text-lg">
-      {spatial && <><img src={spatialRoom} width={1536} height={1024} alt="Contemporary room backdrop for spatial chat" className="pointer-events-none fixed inset-0 -z-20 size-full object-cover" /><div aria-hidden className="spatial-veil pointer-events-none fixed inset-0 -z-10" /></>}
       {/* One grid cell for the left column, so the kitchen panel never pushes the
           run/approval panel out of the three-column layout. */}
       <div className="min-w-0 space-y-4 2xl:space-y-5">
         <KitchenPanel key={kitchenVersion} show={view === "kitchen"} />
       </div>
-      <div className={`${spatial ? "spatial-glass" : "panel"} ${view === "talk" ? "flex" : "hidden"} lg:flex min-h-[calc(100dvh-10rem)] lg:sticky lg:top-4 lg:h-[calc(100dvh-6.5rem)] lg:min-h-0 min-w-0 flex-col rounded-lg px-4 pb-6 pt-5 sm:px-8 2xl:px-12`}>
+      <div className={`panel ${view === "talk" ? "flex" : "hidden"} lg:flex min-h-[calc(100dvh-10rem)] lg:sticky lg:top-4 lg:h-[calc(100dvh-6.5rem)] lg:min-h-0 min-w-0 flex-col rounded-lg px-4 pb-6 pt-5 sm:px-8 2xl:px-12`}>
       <div className="contents">
-      {spatial && <div className="mb-3 flex items-center justify-between gap-2 border-b border-border pb-3">
-        <div className="min-w-0"><p className="dc-label text-[10px]">Spatial chat</p><p className="truncate text-sm font-semibold text-foreground">{getAgents()[voice.agent]?.label ?? "Cooksy"}</p></div>
-        <select aria-label="Choose agent" value={voice.agent} onChange={(event) => setVoice((previous) => ({ ...previous, agent: event.target.value }))} className="max-w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-foreground lg:hidden">{Object.entries(getAgents()).map(([id, agent]) => <option value={id} key={id}>{agent.label}</option>)}</select>
-      </div>}
       <Waveform level={level} active={isRecording} stage={run?.stage} />
 
       <div ref={scrollRef} className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
         {messages.length === 0 && !run && (
-           <div className={spatial ? "px-3 py-6 sm:px-5" : "glass rounded-2xl px-5 py-8 sm:px-7"}>
+           <div className="glass rounded-2xl px-5 py-8 sm:px-7">
             <p className="dc-label">● Ready to listen</p>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">Hold the microphone, turn on Standby, or type below to start.</p>
           </div>

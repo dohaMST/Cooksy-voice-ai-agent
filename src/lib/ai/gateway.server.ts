@@ -5,8 +5,6 @@ export const GATEWAY_BASE_URL = (
 ).replace(/\/$/, "");
 
 export const CHAT_MODEL = process.env["OPENCLAW_DEFAULT_MODEL"] || "openclaw/cook";
-export const SPEECH_MODEL = process.env["OPENCLAW_SPEECH_MODEL"] || "tts-1";
-export const SPEECH_VOICE = process.env["OPENCLAW_SPEECH_VOICE"] || "alloy";
 
 /** Maximum audio upload size (13 MB). */
 export const MAX_AUDIO_BYTES = 13 * 1024 * 1024;

@@ -335,8 +335,6 @@
 }
 .tg-typing i:nth-child(2) { animation-delay: 0.15s; }
 .tg-typing i:nth-child(3) { animation-delay: 0.3s; }
-/* Spatial mode uses the same semantic glass surfaces over a real room scene. */
-.spatial-room { background: var(--surface); }
 html[data-background="midnight"] { --page-backdrop: var(--backdrop-midnight); }
 html[data-background="forest"] { --page-backdrop: var(--backdrop-forest); }
 html[data-background="room"] body { background-image: url('./assets/spatial-room.jpg'); }
@@ -344,13 +342,6 @@ html[data-background="room"] body { background-image: url('./assets/spatial-room
 .background-midnight { background: var(--backdrop-midnight); }
 .background-forest { background: var(--backdrop-forest); }
 .background-room { background: url('./assets/spatial-room.jpg') center / cover; }
-.spatial-veil { background: linear-gradient(to bottom, color-mix(in oklab, var(--background) 8%, transparent), color-mix(in oklab, var(--background) 36%, transparent)); }
-.spatial-glass {
-  background: color-mix(in oklab, var(--surface) 68%, transparent);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-highlight), var(--shadow-glass);
-  backdrop-filter: blur(calc(var(--glass-blur) * 0.9)) saturate(140%);
-}
 @keyframes tg-dot {
   0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-3px); }

@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as ApiApprovalsRouteImport } from './routes/api/approvals'
 import { Route as ApiKitchenRouteImport } from './routes/api/kitchen'
-import { Route as ApiSpeakRouteImport } from './routes/api/speak'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 
 const IndexRoute = IndexRouteImport.update({
@@ -36,11 +35,6 @@ const ApiKitchenRoute = ApiKitchenRouteImport.update({
   path: '/api/kitchen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSpeakRoute = ApiSpeakRouteImport.update({
-  id: '/api/speak',
-  path: '/api/speak',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
   path: '/api/transcribe',
@@ -52,7 +46,6 @@ export interface FileRoutesByFullPath {
   '/api/agent': typeof ApiAgentRoute
   '/api/approvals': typeof ApiApprovalsRoute
   '/api/kitchen': typeof ApiKitchenRoute
-  '/api/speak': typeof ApiSpeakRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
 export interface FileRoutesByTo {
@@ -60,7 +53,6 @@ export interface FileRoutesByTo {
   '/api/agent': typeof ApiAgentRoute
   '/api/approvals': typeof ApiApprovalsRoute
   '/api/kitchen': typeof ApiKitchenRoute
-  '/api/speak': typeof ApiSpeakRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
 export interface FileRoutesById {
@@ -69,33 +61,20 @@ export interface FileRoutesById {
   '/api/agent': typeof ApiAgentRoute
   '/api/approvals': typeof ApiApprovalsRoute
   '/api/kitchen': typeof ApiKitchenRoute
-  '/api/speak': typeof ApiSpeakRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/api/agent'
-    | '/api/approvals'
-    | '/api/kitchen'
-    | '/api/speak'
-    | '/api/transcribe'
+    '/' | '/api/agent' | '/api/approvals' | '/api/kitchen' | '/api/transcribe'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/api/agent'
-    | '/api/approvals'
-    | '/api/kitchen'
-    | '/api/speak'
-    | '/api/transcribe'
+  to: '/' | '/api/agent' | '/api/approvals' | '/api/kitchen' | '/api/transcribe'
   id:
     | '__root__'
     | '/'
     | '/api/agent'
     | '/api/approvals'
     | '/api/kitchen'
-    | '/api/speak'
     | '/api/transcribe'
   fileRoutesById: FileRoutesById
 }
@@ -104,7 +83,6 @@ export interface RootRouteChildren {
   ApiAgentRoute: typeof ApiAgentRoute
   ApiApprovalsRoute: typeof ApiApprovalsRoute
   ApiKitchenRoute: typeof ApiKitchenRoute
-  ApiSpeakRoute: typeof ApiSpeakRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
 }
 
@@ -138,13 +116,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKitchenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/speak': {
-      id: '/api/speak'
-      path: '/api/speak'
-      fullPath: '/api/speak'
-      preLoaderRoute: typeof ApiSpeakRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/transcribe': {
       id: '/api/transcribe'
       path: '/api/transcribe'
@@ -160,7 +131,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRoute: ApiAgentRoute,
   ApiApprovalsRoute: ApiApprovalsRoute,
   ApiKitchenRoute: ApiKitchenRoute,
-  ApiSpeakRoute: ApiSpeakRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
 }
 export const routeTree = rootRouteImport

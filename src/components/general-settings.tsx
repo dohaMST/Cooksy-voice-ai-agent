@@ -46,7 +46,6 @@ export function GeneralSettings({ open, onOpenChange }: { open: boolean; onOpenC
             <label className="block space-y-1.5"><span className="text-sm font-semibold">Voice engine</span>
               <select className={select} value={v.engine} onChange={(e) => set((p) => ({ ...p, engine: e.target.value as VoiceEngine }))}>
                 {(Object.keys(ENGINE_LABEL) as VoiceEngine[]).map((k) => <option key={k} value={k}>{ENGINE_LABEL[k]}</option>)}
-                <optgroup label="Commercial · connection required"><option disabled>ElevenLabs · setup required</option><option disabled>Azure Speech · setup required</option><option disabled>Amazon Polly · setup required</option></optgroup>
               </select>
               <span className="block text-xs text-muted-foreground">No silent fallback: a failed engine shows an error, it never swaps voices behind your back.</span>
             </label>

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useLocal } from "@/lib/settings/store";
-import { speak } from "@/lib/voice/speak";
+import { playPcmStream, unlockSpeaker } from "@/lib/voice/speak";
 
-export type VoiceEngine = "cloud" | "browser" | "kokoro";
+export type VoiceEngine = "browser" | "kokoro";
 export type AsrEngine = "cloud" | "local";
 export type AgentProfile = { label: string };
 export type VoiceSettings = {
@@ -38,7 +38,6 @@ export function getAgents(): Record<string, AgentProfile> {
 export const ENGINE_LABEL: Record<VoiceEngine, string> = {
   browser: "Native · installed device voices",
   kokoro: "Kokoro · local/self-hosted TTS server",
-  cloud: "OpenClaw · gateway / cloud voice",
 };
 
 const VOICE_KEY = "openclaw.voice";
@@ -112,26 +111,22 @@ async function speakKokoro(text: string, v: VoiceSettings, signal?: AbortSignal)
   try {
     res = await fetch(`${v.kokoroUrl.replace(/\/$/, "")}/v1/audio/speech`, {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: signal ?? null,
-      body: JSON.stringify({ model: "kokoro", input: text, voice: v.kokoroVoice, speed: v.rate, response_format: "mp3" }),
+      body: JSON.stringify({ model: "kokoro", input: text, voice: v.kokoroVoice, speed: v.rate, response_format: "pcm", stream: true }),
     });
   } catch (e) {
     if (signal?.aborted) return;
     throw new Error(`Couldn't reach the Kokoro server at ${v.kokoroUrl}.`, { cause: e });
   }
   if (!res.ok) throw new Error(`Kokoro returned ${res.status}`);
-  const url = URL.createObjectURL(await res.blob());
-  const audio = new Audio(url);
-  await new Promise<void>((resolve, reject) => {
-    audio.onended = () => resolve();
-    audio.onerror = () => reject(new Error("Kokoro audio could not play"));
-    signal?.addEventListener("abort", () => { audio.pause(); resolve(); }, { once: true });
-    void audio.play().catch(reject);
-  }).finally(() => URL.revokeObjectURL(url));
+  await playPcmStream(res, signal ? { signal } : {});
 }
 
 /** Speaks with the chosen engine only — a failure is reported, never silently swapped. */
 export function speakWith(v: VoiceSettings, text: string, signal?: AbortSignal) {
-  if (v.engine === "browser") return speakBrowser(text, v, signal);
+  // Browsers gate audio on a user gesture, and the caller is as close to one as we get.
+  unlockSpeaker();
   if (v.engine === "kokoro") return speakKokoro(text, v, signal);
-  return speak(text, signal, v.rate);
+  if (v.engine === "browser") return speakBrowser(text, v, signal);
+  // A stale saved setting can still say "cloud", which no longer exists.
+  return Promise.reject(new Error("Pick a voice engine in settings: device voices or Kokoro."));
 }
