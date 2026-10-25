@@ -65,11 +65,21 @@ test(
       await client.connect();
       try {
         const db = client.db(TEST_DB);
-        for (const name of ["pantry_items", "plan_entries", "shopping_items", "approvals", "audit_log"]) {
+        for (const name of [
+          "pantry_items",
+          "plan_entries",
+          "shopping_items",
+          "approvals",
+          "audit_log",
+        ]) {
           const idx = await db.collection(name).indexes();
           assert.ok(idx.length >= 1, `${name} should have at least the _id index`);
           const ttl = idx.filter((i) => "expireAfterSeconds" in i);
-          assert.deepEqual(ttl, [], `${name} must have no TTL index — it would delete pending approvals before audit`);
+          assert.deepEqual(
+            ttl,
+            [],
+            `${name} must have no TTL index — it would delete pending approvals before audit`,
+          );
         }
       } finally {
         await client.close();
@@ -80,7 +90,8 @@ test(
       await executors.plan_set_meal({ date: "2026-10-24", meal: "dinner", recipeId: "1" });
       // A second insert that bypasses the executor's replace check must fail.
       await assert.rejects(
-        () => store.insertOne("plan_entries", { date: "2026-10-24", meal: "dinner", recipeId: "2" }),
+        () =>
+          store.insertOne("plan_entries", { date: "2026-10-24", meal: "dinner", recipeId: "2" }),
         /duplicate key/i,
       );
     });
@@ -93,7 +104,11 @@ test(
         risk: "low",
       });
       assert.equal(out.status, "approval_required");
-      assert.equal(await store.count("pantry_items", {}), before, "propose must not write business data");
+      assert.equal(
+        await store.count("pantry_items", {}),
+        before,
+        "propose must not write business data",
+      );
 
       const row = await store.findOne("approvals", { _id: out.approval.id });
       assert.equal(row.status, "pending");
@@ -114,8 +129,16 @@ test(
         gate.approve(out.approval.id, "browser"),
       ]);
 
-      assert.equal([a.ok, b.ok].filter(Boolean).length, 1, "Mongo findOneAndUpdate must make this a single winner");
-      assert.equal(await store.count("plan_entries", { date: "2026-10-27" }), 1, "action ran exactly once");
+      assert.equal(
+        [a.ok, b.ok].filter(Boolean).length,
+        1,
+        "Mongo findOneAndUpdate must make this a single winner",
+      );
+      assert.equal(
+        await store.count("plan_entries", { date: "2026-10-27" }),
+        1,
+        "action ran exactly once",
+      );
       assert.equal((await store.findOne("approvals", { _id: out.approval.id })).status, "executed");
     });
 
@@ -134,13 +157,18 @@ test(
         async (tool, args) =>
           createExecutors(second, {
             dataDir: "data-test",
-            resolveRecipes: async (ids) => ids.map((id) => ({ id, name: `Recipe ${id}`, thumb: null })),
+            resolveRecipes: async (ids) =>
+              ids.map((id) => ({ id, name: `Recipe ${id}`, thumb: null })),
           })[tool](args),
         summarize,
       );
 
       const found = await secondGate.get(out.approval.id);
-      assert.equal(found.status, "pending", "the pending approval outlived the original connection");
+      assert.equal(
+        found.status,
+        "pending",
+        "the pending approval outlived the original connection",
+      );
 
       const res = await secondGate.approve(out.approval.id, "browser");
       assert.equal(res.ok, true);
@@ -153,13 +181,20 @@ test(
 
     await t.test("the sweeper expires overdue rows in the database", async () => {
       const out = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });
-      await store.updateOne("approvals", { _id: out.approval.id }, { $set: { expiresAt: Date.now() - 1000 } });
+      await store.updateOne(
+        "approvals",
+        { _id: out.approval.id },
+        { $set: { expiresAt: Date.now() - 1000 } },
+      );
 
       assert.equal(await gate.sweep(), 1);
       const row = await store.findOne("approvals", { _id: out.approval.id });
       assert.equal(row.status, "expired", "the row survives and is marked expired, never deleted");
       assert.ok(row.decidedAt);
-      assert.equal((await store.find("audit_log", { approvalId: out.approval.id }))[0].event, "approval.expired");
+      assert.equal(
+        (await store.find("audit_log", { approvalId: out.approval.id }))[0].event,
+        "approval.expired",
+      );
     });
   },
 );

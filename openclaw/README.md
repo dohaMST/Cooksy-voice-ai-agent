@@ -15,20 +15,23 @@ Prepared 2026-10-23 and executed 2026-10-24 on OpenClaw 2026.8.2. Facts below co
 - **`?` in a reply is the model, not the transport.** gpt-oss-120b emits U+202F NARROW NO-BREAK SPACE in "2 l". The API body is pure ASCII. The console should normalise U+202F to a normal space when it renders.
 
 ## What is here
-| Path | What |
-|---|---|
-| `openclaw.patch.json5` | gateway, two agents, our MCP server, skills folder. No secrets. |
-| `agents/cook/`, `agents/planner/` | workspace files per agent (`AGENTS.md` = rules, `SOUL.md` = voice). Kept short because Groq's free tier is limited by tokens per day. |
-| `skills/{pantry,recipes,week-plan,shopping,approvals}/SKILL.md` | when and how to use each tool |
-| `tools/cooksy-tools.json` | the contract of the 11 tools (5 read, 6 gated) that the MCP server must implement |
+
+| Path                                                            | What                                                                                                                                  |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `openclaw.patch.json5`                                          | gateway, two agents, our MCP server, skills folder. No secrets.                                                                       |
+| `agents/cook/`, `agents/planner/`                               | workspace files per agent (`AGENTS.md` = rules, `SOUL.md` = voice). Kept short because Groq's free tier is limited by tokens per day. |
+| `skills/{pantry,recipes,week-plan,shopping,approvals}/SKILL.md` | when and how to use each tool                                                                                                         |
+| `tools/cooksy-tools.json`                                       | the contract of the 11 tools (5 read, 6 gated) that the MCP server must implement                                                     |
 
 ## Models and voice (all free to start)
+
 - Chat: `groq/openai/gpt-oss-120b`, fallback `groq/openai/gpt-oss-20b`. Needs the Groq plugin and `GROQ_API_KEY`.
-- Speech to text: Whisper on Groq (`whisper-large-v3-turbo`, also OpenClaw's default for Groq audio), called from the console's server route with the same key. Reported free limit is 28,800 audio seconds a day (from a comparison site, not Groq's page; check it). `docker-compose.yml` runs MongoDB only; a local Whisper server (speaches) is a later, optional addition and is not in the stack yet.
-- Text to speech: Kokoro is a later, optional local server on `KOKORO_URL` (see `.env`). It is not in `docker-compose.yml` either — today the console speaks with the browser's own device voices.
+- Speech to text: Whisper on Groq (`whisper-large-v3-turbo`, also OpenClaw's default for Groq audio), called from the console's server route `/api/transcribe` with the same key, configured by `STT_BASE_URL` and `STT_MODEL`. Reported free limit is 28,800 audio seconds a day (from a comparison site, not Groq's page; check it). A local Whisper-compatible server is an optional per-browser alternative and is not in the stack.
+- Text to speech: Kokoro runs as `cooksy-kokoro` in `docker-compose.yml` (CPU image, bound to `127.0.0.1:8880`) and is picked per browser in Settings > Voice & Agents. Device voices stay the code default, so the console still speaks with nothing running. The console streams Kokoro's PCM and starts playing once 0.8 s is buffered, so the reply is heard while the rest is still synthesizing. CPU synthesis is slower than realtime on a laptop, so expect the first words after a second or two rather than instantly.
 
 ## Start-up order
-1. `cp .env.example .env`, fill `MONGO_ROOT_PASSWORD` yourself. Then `docker compose up -d mongo`.
+
+1. `cp .env.example .env`, fill `MONGO_ROOT_PASSWORD` yourself. Then `docker compose up -d` (MongoDB plus the Kokoro voice service; `up -d mongo` if you only want the database).
 2. Install the Groq plugin: `openclaw plugins install @openclaw/groq-provider`, then put `GROQ_API_KEY=...` in `~/.openclaw/.env` (the gateway reads it from there). Do not paste the key in chat.
 3. Validate the patch without writing: `openclaw config patch --file openclaw/openclaw.patch.json5 --dry-run`.
 4. Apply it: `openclaw config patch --file openclaw/openclaw.patch.json5`. Then set the gateway token: `openclaw config set gateway.auth.token <a long random value>`.
@@ -39,11 +42,13 @@ Prepared 2026-10-23 and executed 2026-10-24 on OpenClaw 2026.8.2. Facts below co
 9. Run the gateway (`openclaw gateway`) and test `POST http://127.0.0.1:18789/v1/chat/completions` with the gateway token. **Verified:** `GET /v1/models` advertises `openclaw`, `openclaw/default`, `openclaw/main`, `openclaw/cook` and `openclaw/planner`, and `"model": "openclaw/cook"` routes to Cook.
 
 ## Safety choices
+
 - Gateway bound to loopback with token auth. `exec` is denied; agents have no shell. The workspace folder is a working directory, not a sandbox, so file access is also kept off by the minimal tool profile — **verified from the agent's own tool list**, which contains no `exec`, file or web tool.
 - OpenClaw has its own `approvals` setting for forwarding shell approvals to chat apps. We do not use it: our approval lives in the console and cooksy-api, so the card, the audit log and the database change stay together.
 - Approve and Deny are not tools. Only the browser can call them, so the model cannot approve its own change.
 
 ## Not decided
+
 - Whether a router agent is needed in front of Cook and Planner (current plan: the app switches agents with `set_agent`).
 - Exact model fallback order after measuring Groq's daily token use. Measured so far: a Cook turn costs 4,816-6,394 prompt tokens depending on the bootstrap setting (plus 150-325 completion), with Groq prompt caching returning 1,024-2,048 cached tokens on repeat turns. Planner's gated turn measured 12,925 prompt / 1,557 completion, because it chains `recipes_search` and then `plan_set_meal`.
 - `openai/gpt-oss-120b` handled tool calls correctly in every run — right tool, right arguments, `approval_required` passed through unchanged — so the 20b fallback and `qwen/qwen3.6-27b` were not needed.

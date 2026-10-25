@@ -16,9 +16,21 @@ export type Accent = keyof typeof ACCENTS;
 
 export const BACKGROUNDS = { ember: "Ember", dusk: "Dusk", sand: "Sand", room: "Studio" } as const;
 export type Background = keyof typeof BACKGROUNDS;
-export type ThemeSettings = { accent: Accent; blur: number; glass: number; radius: number; background: Background };
+export type ThemeSettings = {
+  accent: Accent;
+  blur: number;
+  glass: number;
+  radius: number;
+  background: Background;
+};
 export const THEME_KEY = "openclaw.theme";
-export const DEFAULT_THEME: ThemeSettings = { accent: "ember", blur: 24, glass: 58, radius: 24, background: "ember" };
+export const DEFAULT_THEME: ThemeSettings = {
+  accent: "ember",
+  blur: 24,
+  glass: 58,
+  radius: 24,
+  background: "ember",
+};
 export const THEME_LIMITS = { blur: [0, 40], glass: [20, 95], radius: [6, 32] } as const;
 
 export function useTheme() {
@@ -30,7 +42,8 @@ export function useTheme() {
  * the retired green accent lands on ember instead of a half-applied theme.
  */
 export function clampTheme(t: ThemeSettings): ThemeSettings {
-  const c = (v: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, Math.round(v)));
+  const c = (v: number, [lo, hi]: readonly [number, number]) =>
+    Math.min(hi, Math.max(lo, Math.round(v)));
   return {
     accent: t.accent in ACCENTS ? t.accent : DEFAULT_THEME.accent,
     background: t.background in BACKGROUNDS ? t.background : DEFAULT_THEME.background,
@@ -46,7 +59,7 @@ export function useApplyTheme() {
   useEffect(() => {
     const t = clampTheme(theme);
     const root = document.documentElement.style;
-    document.documentElement.dataset['background'] = t.background;
+    document.documentElement.dataset["background"] = t.background;
     // Only the base ember is written: bright/deep are mixed from it in CSS, so
     // one property retints buttons, glows, borders and the WebGL field together.
     root.setProperty("--dc-ember", ACCENTS[t.accent].color);

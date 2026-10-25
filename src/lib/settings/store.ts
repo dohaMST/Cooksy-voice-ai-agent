@@ -10,7 +10,11 @@ function read<T>(key: string, fallback: T): T {
   if (hit && hit.raw === raw) return hit.value as T;
   let value: T = fallback;
   if (raw) {
-    try { value = { ...(fallback as object), ...JSON.parse(raw) } as T; } catch { value = fallback; }
+    try {
+      value = { ...(fallback as object), ...JSON.parse(raw) } as T;
+    } catch {
+      value = fallback;
+    }
   }
   cache.set(key, { raw, value });
   return value;
@@ -24,7 +28,9 @@ const writeHooks = new Set<(key: string, value: unknown) => void>();
 /** Observe every local write (used by cloud sync). */
 export function onLocalWrite(fn: (key: string, value: unknown) => void) {
   writeHooks.add(fn);
-  return () => { writeHooks.delete(fn); };
+  return () => {
+    writeHooks.delete(fn);
+  };
 }
 
 export function writeLocal<T>(key: string, value: T, opts?: { silent?: boolean }) {
@@ -34,17 +40,30 @@ export function writeLocal<T>(key: string, value: T, opts?: { silent?: boolean }
 }
 
 /** Browser-saved settings shared live across components. Server render uses the fallback. */
-export function useLocal<T extends object>(key: string, fallback: T): [T, (next: T | ((prev: T) => T)) => void] {
-  const subscribe = useCallback((fn: () => void) => {
-    const set = listeners.get(key) ?? new Set();
-    set.add(fn);
-    listeners.set(key, set);
-    return () => set.delete(fn);
-  }, [key]);
-  const value = useSyncExternalStore(subscribe, () => read(key, fallback), () => fallback);
-  const update = useCallback((next: T | ((prev: T) => T)) => {
-    const prev = read(key, fallback);
-    writeLocal(key, typeof next === "function" ? (next as (p: T) => T)(prev) : next);
-  }, [key, fallback]);
+export function useLocal<T extends object>(
+  key: string,
+  fallback: T,
+): [T, (next: T | ((prev: T) => T)) => void] {
+  const subscribe = useCallback(
+    (fn: () => void) => {
+      const set = listeners.get(key) ?? new Set();
+      set.add(fn);
+      listeners.set(key, set);
+      return () => set.delete(fn);
+    },
+    [key],
+  );
+  const value = useSyncExternalStore(
+    subscribe,
+    () => read(key, fallback),
+    () => fallback,
+  );
+  const update = useCallback(
+    (next: T | ((prev: T) => T)) => {
+      const prev = read(key, fallback);
+      writeLocal(key, typeof next === "function" ? (next as (p: T) => T)(prev) : next);
+    },
+    [key, fallback],
+  );
   return [value, update];
 }

@@ -1,6 +1,15 @@
 export type Choice = { id: string; label: string; value: string };
 export type Nav = "back" | "cancel" | "home";
-export const COMMAND_NAMES = ["show_tab", "set_agent", "set_speaking_rate", "open_settings", "close_settings", "standby", "set_accent", "set_style"] as const;
+export const COMMAND_NAMES = [
+  "show_tab",
+  "set_agent",
+  "set_speaking_rate",
+  "open_settings",
+  "close_settings",
+  "standby",
+  "set_accent",
+  "set_style",
+] as const;
 export type Command = { name: (typeof COMMAND_NAMES)[number]; value: string };
 export type ActionProposal = {
   id: string;
@@ -34,41 +43,76 @@ function parseActionProposal(raw: unknown): ActionProposal | null | undefined {
   if (typeof raw !== "object") return undefined;
   const p = raw as Record<string, unknown>;
   const id = typeof p["id"] === "string" && p["id"].trim() ? p["id"].trim().slice(0, 64) : "";
-  const title = typeof p["title"] === "string" && p["title"].trim() ? p["title"].trim().slice(0, 120) : "";
-  const tool = typeof p["tool"] === "string" && p["tool"].trim() ? p["tool"].trim().slice(0, 80) : "";
-  const summary = typeof p["summary"] === "string" && p["summary"].trim() ? p["summary"].trim().slice(0, 500) : "";
+  const title =
+    typeof p["title"] === "string" && p["title"].trim() ? p["title"].trim().slice(0, 120) : "";
+  const tool =
+    typeof p["tool"] === "string" && p["tool"].trim() ? p["tool"].trim().slice(0, 80) : "";
+  const summary =
+    typeof p["summary"] === "string" && p["summary"].trim()
+      ? p["summary"].trim().slice(0, 500)
+      : "";
   if (!id || !title || !tool || !summary) return undefined;
-  const risk = p["risk"] === "low" || p["risk"] === "medium" || p["risk"] === "high" ? p["risk"] : undefined;
-  return { id, title: normalizeText(title), tool: normalizeText(tool), summary: normalizeText(summary), ...(risk ? { risk } : {}) };
+  const risk =
+    p["risk"] === "low" || p["risk"] === "medium" || p["risk"] === "high" ? p["risk"] : undefined;
+  return {
+    id,
+    title: normalizeText(title),
+    tool: normalizeText(tool),
+    summary: normalizeText(summary),
+    ...(risk ? { risk } : {}),
+  };
 }
 
 /** Validates planner output against the blueprint rules; returns null if invalid. */
 export function parseScreen(raw: string): Screen | null {
   try {
-    const data = JSON.parse(raw) as { kind?: unknown; screen?: { text?: unknown; choices?: unknown; navigation?: unknown }; action_proposal?: unknown };
+    const data = JSON.parse(raw) as {
+      kind?: unknown;
+      screen?: { text?: unknown; choices?: unknown; navigation?: unknown };
+      action_proposal?: unknown;
+    };
     const proposal = parseActionProposal(data.action_proposal);
     // `kind` is a discriminator that carries no information: the shape already does.
     // gpt-oss omits it about half the time, so an absent value is accepted and only a
     // wrong one is refused.
-    const kindOk = data.kind === undefined || data.kind === "screen" || data.kind === "action_proposal";
+    const kindOk =
+      data.kind === undefined || data.kind === "screen" || data.kind === "action_proposal";
     if (!kindOk || proposal === undefined || !data.screen) return null;
     const text = typeof data.screen.text === "string" ? normalizeText(data.screen.text.trim()) : "";
     if (!text) return null;
     const seen = new Set<string>();
     const choices = (Array.isArray(data.screen.choices) ? data.screen.choices : [])
-      .filter((c): c is Choice =>
-        Boolean(c) && typeof c.id === "string" && /^[a-z][a-z0-9_]{0,31}$/.test(c.id) &&
-        typeof c.label === "string" && c.label.length > 0 && c.label.length <= 40 &&
-        typeof c.value === "string" && c.value.length > 0 && c.value.length <= 1000,
+      .filter(
+        (c): c is Choice =>
+          Boolean(c) &&
+          typeof c.id === "string" &&
+          /^[a-z][a-z0-9_]{0,31}$/.test(c.id) &&
+          typeof c.label === "string" &&
+          c.label.length > 0 &&
+          c.label.length <= 40 &&
+          typeof c.value === "string" &&
+          c.value.length > 0 &&
+          c.value.length <= 1000,
       )
       .map((c) => ({ ...c, label: normalizeText(c.label), value: normalizeText(c.value) }))
       .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
-    const navigation = [...new Set((Array.isArray(data.screen.navigation) ? data.screen.navigation : []) as Nav[])]
-      .filter((n) => NAV_VALUES.includes(n));
+    const navigation = [
+      ...new Set((Array.isArray(data.screen.navigation) ? data.screen.navigation : []) as Nav[]),
+    ].filter((n) => NAV_VALUES.includes(n));
     // Blueprint: choices + navigation must total four or fewer.
     const trimmedChoices = choices.slice(0, Math.max(0, 4 - navigation.length));
-    const commands = (Array.isArray((data as { app_commands?: unknown }).app_commands) ? (data as { app_commands: unknown[] }).app_commands : [])
-      .filter((c): c is Command => Boolean(c) && typeof c === "object" && COMMAND_NAMES.includes((c as Command).name) && typeof (c as Command).value === "string")
+    const commands = (
+      Array.isArray((data as { app_commands?: unknown }).app_commands)
+        ? (data as { app_commands: unknown[] }).app_commands
+        : []
+    )
+      .filter(
+        (c): c is Command =>
+          Boolean(c) &&
+          typeof c === "object" &&
+          COMMAND_NAMES.includes((c as Command).name) &&
+          typeof (c as Command).value === "string",
+      )
       .slice(0, 3);
     return { text, choices: trimmedChoices, navigation, commands, actionProposal: proposal };
   } catch {
@@ -78,7 +122,11 @@ export function parseScreen(raw: string): Screen | null {
 
 /** Removes ```json fences some models wrap around the screen object. */
 export function cleanRaw(raw: string): string {
-  return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
+  return raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/, "")
+    .trim();
 }
 
 const TAB_VALUES = ["talk", "kitchen", "plan", "run"] as const;
@@ -150,7 +198,10 @@ export function partialText(raw: string): string {
 export const NAV_LABEL: Record<Nav, string> = { back: "Back", cancel: "Cancel", home: "Home" };
 
 export function spokenScreen(screen: Screen): string {
-  const options = [...screen.choices.map((c) => c.label), ...screen.navigation.map((n) => NAV_LABEL[n])];
+  const options = [
+    ...screen.choices.map((c) => c.label),
+    ...screen.navigation.map((n) => NAV_LABEL[n]),
+  ];
   if (!options.length) return screen.text;
   return `${screen.text} ${options.map((label, i) => `${i + 1}, ${label}.`).join(" ")}`;
 }
@@ -165,7 +216,9 @@ export function paginate(text: string, budget = PAGE_BUDGET): string[] {
   while (rest.length > budget) {
     const window = rest.slice(0, budget);
     let cut = Math.max(window.lastIndexOf("\n\n"), window.lastIndexOf("\n"));
-    if (cut < budget * 0.5) cut = Math.max(window.lastIndexOf(". "), window.lastIndexOf("? "), window.lastIndexOf("! ")) + 1;
+    if (cut < budget * 0.5)
+      cut =
+        Math.max(window.lastIndexOf(". "), window.lastIndexOf("? "), window.lastIndexOf("! ")) + 1;
     if (cut < budget * 0.5) cut = window.lastIndexOf(" ");
     if (cut <= 0) {
       cut = budget;

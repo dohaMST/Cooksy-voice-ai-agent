@@ -87,7 +87,11 @@ test("the agent token can read but cannot approve or deny", async () => {
 
   assert.equal((await call(app, "POST", `/approvals/${id}/approve`, { token: AGENT })).status, 403);
   assert.equal((await call(app, "POST", `/approvals/${id}/deny`, { token: AGENT })).status, 403);
-  assert.equal((await call(app, "GET", "/approvals", { token: AGENT })).status, 403, "queue is approver-only");
+  assert.equal(
+    (await call(app, "GET", "/approvals", { token: AGENT })).status,
+    403,
+    "queue is approver-only",
+  );
   assert.equal((await call(app, "GET", "/activity", { token: AGENT })).status, 403);
 
   assert.equal((await app.gate.get(id)).status, "pending", "still pending after refused attempts");
@@ -115,7 +119,9 @@ test("a denied approval returns 200 and writes nothing", async () => {
   });
   assert.equal(propose.status, 200, "plan propose must resolve via the contract route map");
 
-  const deny = await call(app, "POST", `/approvals/${propose.body.approval.id}/deny`, { token: APPROVER });
+  const deny = await call(app, "POST", `/approvals/${propose.body.approval.id}/deny`, {
+    token: APPROVER,
+  });
   assert.equal(deny.status, 200);
   assert.equal(await store.count("plan_entries", {}), 0);
 });
@@ -124,8 +130,14 @@ test("approving twice returns 409 the second time", async () => {
   const { app } = makeApp();
   const propose = await call(app, "POST", "/shopping/propose-build", { token: AGENT, body: {} });
   const id = propose.body.approval.id;
-  assert.equal((await call(app, "POST", `/approvals/${id}/approve`, { token: APPROVER })).status, 200);
-  assert.equal((await call(app, "POST", `/approvals/${id}/approve`, { token: APPROVER })).status, 409);
+  assert.equal(
+    (await call(app, "POST", `/approvals/${id}/approve`, { token: APPROVER })).status,
+    200,
+  );
+  assert.equal(
+    (await call(app, "POST", `/approvals/${id}/approve`, { token: APPROVER })).status,
+    409,
+  );
 });
 
 test("the polling endpoint returns pending approvals and a serverTime cursor", async () => {
@@ -200,11 +212,17 @@ test("the route map resolves every gated tool, including the two irregular names
 
 test("an unknown propose route is 404", async () => {
   const { app } = makeApp();
-  assert.equal((await call(app, "POST", "/pantry/propose-frobnicate", { token: AGENT, body: {} })).status, 404);
+  assert.equal(
+    (await call(app, "POST", "/pantry/propose-frobnicate", { token: AGENT, body: {} })).status,
+    404,
+  );
 });
 
 test("a read route is not reachable as a propose route", async () => {
   const { app } = makeApp();
   // /recipes/search is a read tool; POSTing at it must not create an approval.
-  assert.equal((await call(app, "POST", "/recipes/search", { token: AGENT, body: {} })).status, 404);
+  assert.equal(
+    (await call(app, "POST", "/recipes/search", { token: AGENT, body: {} })).status,
+    404,
+  );
 });

@@ -5,12 +5,12 @@
 {
   gateway: {
     mode: "local",
-    bind: "loopback",            // this machine only
+    bind: "loopback", // this machine only
     port: 18789,
-    auth: { mode: "token" },     // set the token with `openclaw config set gateway.auth.token ...`, never in this file
+    auth: { mode: "token" }, // set the token with `openclaw config set gateway.auth.token ...`, never in this file
     http: {
       endpoints: {
-        chatCompletions: { enabled: true },   // off by default; the console talks to /v1/chat/completions
+        chatCompletions: { enabled: true }, // off by default; the console talks to /v1/chat/completions
       },
     },
   },
@@ -106,7 +106,9 @@
     servers: {
       cooksy: {
         command: "node",
-        args: ["C:/Users/User/Downloads/DarkCoders-OpenClaw-Assignment-Doha/DarkCoders-OpenClaw-Assignment-Doha/living-ai-talk/api/mcp-server.mjs"],
+        args: [
+          "C:/Users/User/Downloads/DarkCoders-OpenClaw-Assignment-Doha/DarkCoders-OpenClaw-Assignment-Doha/living-ai-talk/api/mcp-server.mjs",
+        ],
         // No secrets in this file. OpenClaw substitutes ${VAR} in config string
         // values at load time (docs/help/environment.md), so the agent token is
         // read from the environment the gateway loads from ~/.openclaw/.env.
@@ -138,7 +140,11 @@
 
   // Our five skills live in this repo.
   skills: {
-    load: { extraDirs: ["C:/Users/User/Downloads/DarkCoders-OpenClaw-Assignment-Doha/DarkCoders-OpenClaw-Assignment-Doha/living-ai-talk/openclaw/skills"] },
+    load: {
+      extraDirs: [
+        "C:/Users/User/Downloads/DarkCoders-OpenClaw-Assignment-Doha/DarkCoders-OpenClaw-Assignment-Doha/living-ai-talk/openclaw/skills",
+      ],
+    },
   },
 
   // Agents get no shell and no file access: they only use the cooksy tools.

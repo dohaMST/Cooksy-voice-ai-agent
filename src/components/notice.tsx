@@ -86,7 +86,10 @@ export function NoticeBar({ notice, onDismiss }: { notice: Notice | null; onDism
     const timeout = window.setTimeout(onDismiss, timer.current.remaining);
     return () => {
       window.clearTimeout(timeout);
-      timer.current.remaining = Math.max(0, timer.current.remaining - (Date.now() - timer.current.startedAt));
+      timer.current.remaining = Math.max(
+        0,
+        timer.current.remaining - (Date.now() - timer.current.startedAt),
+      );
     };
   }, [notice, paused, onDismiss]);
 
@@ -108,7 +111,9 @@ export function NoticeBar({ notice, onDismiss }: { notice: Notice | null; onDism
           onBlurCapture={() => setPaused(false)}
           className={`flex items-start gap-2.5 rounded-2xl border bg-black/25 p-2.5 backdrop-blur-md ${tone.border}`}
         >
-          <span className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full ${tone.chip}`}>
+          <span
+            className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full ${tone.chip}`}
+          >
             <Icon className="size-3.5" aria-hidden />
           </span>
           <p className="min-w-0 flex-1 pt-0.5 text-xs leading-relaxed text-foreground">
@@ -125,7 +130,10 @@ export function NoticeBar({ notice, onDismiss }: { notice: Notice | null; onDism
           </button>
         </div>
         {timed && (
-          <span aria-hidden className="mt-1 block h-px overflow-hidden rounded-full bg-white/[0.06]">
+          <span
+            aria-hidden
+            className="mt-1 block h-px overflow-hidden rounded-full bg-white/[0.06]"
+          >
             <span
               key={held.id}
               className="notice-progress block h-full bg-primary/60"

@@ -71,7 +71,9 @@ export function createMemoryStore() {
     kind: "memory",
     async init() {},
     async find(name, filter = {}) {
-      return coll(name).filter((d) => matches(d, filter)).map((d) => ({ ...d }));
+      return coll(name)
+        .filter((d) => matches(d, filter))
+        .map((d) => ({ ...d }));
     },
     async findOne(name, filter) {
       const hit = coll(name).find((d) => matches(d, filter));

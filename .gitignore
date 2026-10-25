@@ -6,3 +6,7 @@ reports/*.log
 dist/
 .DS_Store
 app/dist/
+
+.output/
+.tanstack/
+.wrangler/

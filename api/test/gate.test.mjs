@@ -75,7 +75,10 @@ test("approve runs the stored action and writes data + audit", async () => {
   assert.ok(item, "pantry item was written");
   assert.equal(item.quantity, 2);
   assert.equal((await store.findOne("approvals", { _id: out.approval.id })).status, "executed");
-  assert.equal((await store.find("audit_log", { approvalId: out.approval.id }))[0].event, "approval.executed");
+  assert.equal(
+    (await store.find("audit_log", { approvalId: out.approval.id }))[0].event,
+    "approval.executed",
+  );
 });
 
 test("a second approve of the same id does not run the action twice", async () => {
@@ -132,12 +135,19 @@ test("deny then approve is refused and changes nothing", async () => {
 
 test("deny writes only the approval row and an audit entry", async () => {
   const { store, gate } = makeGate();
-  const out = await gate.propose({ tool: "plan_clear_day", args: { date: "2026-10-26" }, risk: "medium" });
+  const out = await gate.propose({
+    tool: "plan_clear_day",
+    args: { date: "2026-10-26" },
+    risk: "medium",
+  });
   const before = await counts(store);
   await gate.deny(out.approval.id, "browser");
   assert.deepEqual(await counts(store), before);
   assert.equal((await store.findOne("approvals", { _id: out.approval.id })).status, "denied");
-  assert.equal((await store.find("audit_log", { approvalId: out.approval.id }))[0].event, "approval.denied");
+  assert.equal(
+    (await store.find("audit_log", { approvalId: out.approval.id }))[0].event,
+    "approval.denied",
+  );
 });
 
 test("unknown approval id is refused and changes nothing", async () => {
@@ -156,7 +166,11 @@ test("an expired approval cannot be executed and is marked expired", async () =>
     args: { name: "pepper", quantity: 1, unit: "tsp" },
     risk: "low",
   });
-  await store.updateOne("approvals", { _id: out.approval.id }, { $set: { expiresAt: Date.now() - 1000 } });
+  await store.updateOne(
+    "approvals",
+    { _id: out.approval.id },
+    { $set: { expiresAt: Date.now() - 1000 } },
+  );
 
   const before = await counts(store);
   const res = await gate.approve(out.approval.id, "browser");
@@ -169,11 +183,19 @@ test("an expired approval cannot be executed and is marked expired", async () =>
 
 test("a failing executor sets failed, writes an audit row and no data", async () => {
   const store = createMemoryStore();
-  const gate = createApprovalGate(store, async () => {
-    throw new Error("boom");
-  }, summarize);
+  const gate = createApprovalGate(
+    store,
+    async () => {
+      throw new Error("boom");
+    },
+    summarize,
+  );
 
-  const out = await gate.propose({ tool: "pantry_remove", args: { name: "ghost" }, risk: "medium" });
+  const out = await gate.propose({
+    tool: "pantry_remove",
+    args: { name: "ghost" },
+    risk: "medium",
+  });
   const res = await gate.approve(out.approval.id, "browser");
 
   assert.equal(res.ok, false);
@@ -182,20 +204,30 @@ test("a failing executor sets failed, writes an audit row and no data", async ()
   const row = await store.findOne("approvals", { _id: out.approval.id });
   assert.equal(row.status, "failed");
   assert.equal(row.error, "boom");
-  assert.equal((await store.find("audit_log", { approvalId: out.approval.id }))[0].event, "approval.failed");
+  assert.equal(
+    (await store.find("audit_log", { approvalId: out.approval.id }))[0].event,
+    "approval.failed",
+  );
 });
 
 test("the sweeper expires overdue rows and audits them", async () => {
   const { store, gate } = makeGate();
   const out = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });
-  await store.updateOne("approvals", { _id: out.approval.id }, { $set: { expiresAt: Date.now() - 1000 } });
+  await store.updateOne(
+    "approvals",
+    { _id: out.approval.id },
+    { $set: { expiresAt: Date.now() - 1000 } },
+  );
 
   assert.equal(await gate.sweep(), 1, "sweeper should expire one row");
 
   const row = await store.findOne("approvals", { _id: out.approval.id });
   assert.equal(row.status, "expired");
   assert.ok(row.decidedAt, "decidedAt recorded");
-  assert.equal((await store.find("audit_log", { approvalId: out.approval.id }))[0].event, "approval.expired");
+  assert.equal(
+    (await store.find("audit_log", { approvalId: out.approval.id }))[0].event,
+    "approval.expired",
+  );
   assert.equal(await gate.sweep(), 0, "sweeping twice must not double-count");
 });
 
@@ -203,7 +235,11 @@ test("pendingList hides overdue rows and never exposes dead cards", async () => 
   const { store, gate } = makeGate();
   const live = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });
   const dead = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });
-  await store.updateOne("approvals", { _id: dead.approval.id }, { $set: { expiresAt: Date.now() - 1 } });
+  await store.updateOne(
+    "approvals",
+    { _id: dead.approval.id },
+    { $set: { expiresAt: Date.now() - 1 } },
+  );
 
   const pending = await gate.pendingList();
   assert.equal(pending.length, 1);
@@ -213,7 +249,11 @@ test("pendingList hides overdue rows and never exposes dead cards", async () => 
 test("gate expires a pending approval lazily on read", async () => {
   const { store, gate } = makeGate();
   const out = await gate.propose({ tool: "shopping_build", args: {}, risk: "low" });
-  await store.updateOne("approvals", { _id: out.approval.id }, { $set: { expiresAt: Date.now() - 1000 } });
+  await store.updateOne(
+    "approvals",
+    { _id: out.approval.id },
+    { $set: { expiresAt: Date.now() - 1000 } },
+  );
 
   assert.equal((await gate.get(out.approval.id)).status, "expired");
   assert.equal(

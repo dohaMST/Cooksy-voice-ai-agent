@@ -8,7 +8,10 @@ import { MAX_AUDIO_BYTES } from "./gateway.server";
  * Whisper answers once, so there is no partial transcript to stream; callers
  * get the finished string.
  */
-const STT_BASE_URL = (process.env["STT_BASE_URL"] || "https://api.groq.com/openai/v1").replace(/\/$/, "");
+const STT_BASE_URL = (process.env["STT_BASE_URL"] || "https://api.groq.com/openai/v1").replace(
+  /\/$/,
+  "",
+);
 const STT_MODEL = process.env["STT_MODEL"] || "whisper-large-v3-turbo";
 const STT_KEY = process.env["GROQ_API_KEY"] || process.env["STT_API_KEY"] || "";
 
@@ -18,12 +21,20 @@ async function upstreamError(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { error?: unknown };
     if (typeof body.error === "string") detail = body.error;
-    else if (body.error && typeof body.error === "object" && "message" in body.error && typeof body.error.message === "string") detail = body.error.message;
+    else if (
+      body.error &&
+      typeof body.error === "object" &&
+      "message" in body.error &&
+      typeof body.error.message === "string"
+    )
+      detail = body.error.message;
   } catch {
     detail = "";
   }
   const trimmed = detail.trim().slice(0, 300);
-  return trimmed ? `Speech recognition failed: ${trimmed}` : `Speech recognition failed with ${response.status}.`;
+  return trimmed
+    ? `Speech recognition failed: ${trimmed}`
+    : `Speech recognition failed with ${response.status}.`;
 }
 
 export async function transcribe(file: File, signal?: AbortSignal): Promise<string> {

@@ -79,7 +79,12 @@ const DOT_FRAGMENT = `
 /** Slow ember haze behind the whole console. */
 export function mountEmberField(canvas: HTMLCanvasElement): Handle {
   const reduced = reducedMotion();
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "low-power" });
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: false,
+    powerPreference: "low-power",
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setClearAlpha(0);
 
@@ -133,7 +138,7 @@ export function mountEmberField(canvas: HTMLCanvasElement): Handle {
   let frame = 0;
 
   const draw = (seconds: number) => {
-    material.uniforms['uTime']!.value = seconds;
+    material.uniforms["uTime"]!.value = seconds;
     renderer.render(scene, camera);
   };
 
@@ -212,7 +217,12 @@ export function mountVoiceOrb(
   options: { points?: number } = {},
 ): Handle {
   const reduced = reducedMotion();
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "low-power" });
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: false,
+    powerPreference: "low-power",
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearAlpha(0);
 
@@ -275,8 +285,8 @@ export function mountVoiceOrb(
   let level = 0;
 
   const draw = (seconds: number) => {
-    material.uniforms['uTime']!.value = seconds;
-    material.uniforms['uLevel']!.value = level;
+    material.uniforms["uTime"]!.value = seconds;
+    material.uniforms["uLevel"]!.value = level;
     renderer.render(scene, camera);
   };
 

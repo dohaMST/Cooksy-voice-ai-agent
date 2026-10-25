@@ -75,7 +75,8 @@ export async function recordWav(): Promise<Recording> {
         teardown();
         const blob = encodeWav(chunks, audioContext.sampleRate);
         await audioContext.close();
-        if (blob.size < 4096) throw new Error("That recording was too short — hold the button and speak.");
+        if (blob.size < 4096)
+          throw new Error("That recording was too short — hold the button and speak.");
         return new File([blob], "recording.wav", { type: "audio/wav" });
       },
     };

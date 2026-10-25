@@ -142,14 +142,26 @@ export function CircuitField({ className = "" }: { className?: string }) {
 
             /* Occasional via on an elbow. */
             if (rnd() < 0.14) {
-              nextPads.push({ x: b.x, y: b.y, r: (1.5 + rnd() * 1.2) * s, a: alpha * 0.85, p: rnd() * TAU });
+              nextPads.push({
+                x: b.x,
+                y: b.y,
+                r: (1.5 + rnd() * 1.2) * s,
+                a: alpha * 0.85,
+                p: rnd() * TAU,
+              });
             }
           }
 
           const end = pts[pts.length - 1]!;
           const endA = fade(end.x, end.y);
           if (endA > 0.12) {
-            nextPads.push({ x: end.x, y: end.y, r: (2.4 + rnd() * 1.8) * s, a: endA, p: rnd() * TAU });
+            nextPads.push({
+              x: end.x,
+              y: end.y,
+              r: (2.4 + rnd() * 1.8) * s,
+              a: endA,
+              p: rnd() * TAU,
+            });
             let len = 0;
             for (let k = 1; k < pts.length; k++) {
               const a = pts[k - 1]!;
@@ -173,7 +185,9 @@ export function CircuitField({ className = "" }: { className?: string }) {
         path.lineTo(seg.x2, seg.y2);
       }
 
-      buckets = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, path]) => ({ a: key / 5, path }));
+      buckets = [...groups.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([key, path]) => ({ a: key / 5, path }));
       pads = nextPads;
       wires = nextWires;
     };
@@ -249,7 +263,7 @@ export function CircuitField({ className = "" }: { className?: string }) {
         const step = Math.floor(t / cycle);
         const wire = wires[((step % count) + count) % count];
         if (wire) {
-          const target = (t % cycle) / cycle * wire.len;
+          const target = ((t % cycle) / cycle) * wire.len;
           let acc = 0;
           let sx = wire.pts[0]!.x;
           let sy = wire.pts[0]!.y;

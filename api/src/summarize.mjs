@@ -21,8 +21,14 @@ export function summarize(tool, args) {
     case "plan_set_meal": {
       const when = `${MEAL_LABEL[args.meal]} on ${args.date}`;
       return args.replace
-        ? { title: `Replace the meal on ${when}`, summary: `Replaces the existing meal with recipe ${args.recipeId}.` }
-        : { title: `Add a meal to ${when}`, summary: `Adds recipe ${args.recipeId} to your week plan.` };
+        ? {
+            title: `Replace the meal on ${when}`,
+            summary: `Replaces the existing meal with recipe ${args.recipeId}.`,
+          }
+        : {
+            title: `Add a meal to ${when}`,
+            summary: `Adds recipe ${args.recipeId} to your week plan.`,
+          };
     }
     case "plan_clear_day":
       return {

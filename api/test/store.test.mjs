@@ -40,7 +40,10 @@ test("$in matches membership and rejects non-members", () => {
 });
 
 test("an unknown operator throws instead of matching everything", () => {
-  assert.throws(() => matches(docs[0], { date: { $ne: "2026-10-19" } }), /Unsupported filter operator "\$ne"/);
+  assert.throws(
+    () => matches(docs[0], { date: { $ne: "2026-10-19" } }),
+    /Unsupported filter operator "\$ne"/,
+  );
 });
 
 test("equality and multiple fields combine as AND", () => {
@@ -68,7 +71,9 @@ test("the /plan query shape returns only the requested week", async () => {
     await executors.plan_set_meal({ date, meal: "dinner", recipeId: "52771" });
   }
 
-  const week = await store.find("plan_entries", { date: { $gte: "2026-10-19", $lte: "2026-10-25" } });
+  const week = await store.find("plan_entries", {
+    date: { $gte: "2026-10-19", $lte: "2026-10-25" },
+  });
   assert.equal(week.length, 2, "the 2026-11-02 entry must not leak into this week");
 });
 
@@ -83,7 +88,11 @@ test("shopping_build skips items already in the pantry", async () => {
   await executors.pantry_update({ name: "recipe one", quantity: 1, unit: "item" });
   await executors.shopping_build({});
 
-  assert.equal(await store.count("shopping_items", {}), 0, "pantry item must not appear on the list");
+  assert.equal(
+    await store.count("shopping_items", {}),
+    0,
+    "pantry item must not appear on the list",
+  );
 
   await executors.pantry_remove({ name: "recipe one" });
   await executors.shopping_build({});

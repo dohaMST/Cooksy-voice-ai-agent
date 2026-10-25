@@ -1,4 +1,9 @@
 # Roadmap
+
+> Historical record of the Lovable-era build. Several items below were removed during the
+> Cooksy rework - spatial chat, the WebXR headset view, cloud sync, Telegram, the models
+> panel and the unified YAML plan. See `my_Folder/phase_4_audit.md` and `phase_5_audit.md`.
+
 - [x] Simplify navbar and add persistent live background themes
 - [x] Expand native voice selection, local ASR adapter and setup guidance; commercial choices marked setup required
 - [x] Add configurable roadmap driven by uploaded unified YAML

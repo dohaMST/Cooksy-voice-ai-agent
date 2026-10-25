@@ -116,6 +116,9 @@
   --sev-info: oklch(0.82 0.12 70);
   --dc-radius: var(--theme-radius, 24px);
   --dc-radius-lg: calc(var(--dc-radius) + 6px);
+  /* One number for the fixed bar: the header height, the hero's top padding and
+     the anchor scroll offset all read from it. */
+  --header-h: 4rem;
   --radius: 0.75rem;
   /* Glass: warm translucent fills over the ember haze. */
   --glass-alpha: 58%;
@@ -164,8 +167,12 @@
   --sidebar-accent-foreground: var(--dc-text);
   --sidebar-border: var(--dc-border);
   --sidebar-ring: var(--dc-ember);
-  --dc-glow: 0 0 0 1px color-mix(in oklab, var(--dc-ember) 18%, transparent), 0 0 40px -14px color-mix(in oklab, var(--dc-ember) 55%, transparent);
-  --dc-glow-strong: 0 0 0 1px color-mix(in oklab, var(--dc-ember) 42%, transparent), 0 0 70px -10px color-mix(in oklab, var(--dc-ember) 65%, transparent);
+  --dc-glow:
+    0 0 0 1px color-mix(in oklab, var(--dc-ember) 18%, transparent),
+    0 0 40px -14px color-mix(in oklab, var(--dc-ember) 55%, transparent);
+  --dc-glow-strong:
+    0 0 0 1px color-mix(in oklab, var(--dc-ember) 42%, transparent),
+    0 0 70px -10px color-mix(in oklab, var(--dc-ember) 65%, transparent);
   --shadow-mic: 0 10px 30px -10px color-mix(in oklab, var(--dc-ember) 60%, transparent);
   --shadow-card: 0 12px 36px -24px oklch(0 0 0 / 90%);
   --dur-fast: 120ms;
@@ -183,13 +190,32 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    /* Anchor jumps and scrollIntoView stop below the fixed header instead of
+       sliding the section under it, with a little air left over. */
+    scroll-padding-top: calc(var(--header-h) + 1.5rem);
+  }
+
+  /* Smooth only when the visitor has not asked motion to stop; the console's
+     own scroll containers keep their native behaviour. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   body {
     background-color: var(--page-backdrop);
     background-image:
-      radial-gradient(1100px 620px at 50% -12%, color-mix(in oklab, var(--dc-ember) 13%, transparent), transparent 70%),
-      radial-gradient(760px 520px at 88% 108%, color-mix(in oklab, var(--dc-ember) 7%, transparent), transparent 72%);
+      radial-gradient(
+        1100px 620px at 50% -12%,
+        color-mix(in oklab, var(--dc-ember) 13%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        760px 520px at 88% 108%,
+        color-mix(in oklab, var(--dc-ember) 7%, transparent),
+        transparent 72%
+      );
     background-repeat: no-repeat;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -228,8 +254,16 @@
 /* Warm haze behind the console. The Three.js ember field renders on top of it. */
 @utility ember-haze {
   background-image:
-    radial-gradient(620px 380px at 50% 0%, color-mix(in oklab, var(--dc-ember) 16%, transparent), transparent 72%),
-    radial-gradient(420px 300px at 12% 92%, color-mix(in oklab, var(--dc-ember) 8%, transparent), transparent 75%);
+    radial-gradient(
+      620px 380px at 50% 0%,
+      color-mix(in oklab, var(--dc-ember) 16%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      420px 300px at 12% 92%,
+      color-mix(in oklab, var(--dc-ember) 8%, transparent),
+      transparent 75%
+    );
 }
 
 @utility panel {
@@ -627,6 +661,114 @@ html[data-background="room"] body {
   transform: none;
 }
 
+/* The page chrome: glass over the hero, and a denser plate once the page moves,
+   so section text never fights the bar for legibility. */
+.site-header {
+  border-bottom: 1px solid oklch(1 0 0 / 6%);
+  background-color: color-mix(in oklab, var(--background) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.site-header[data-scrolled="true"] {
+  border-bottom-color: color-mix(in oklab, var(--dc-ember) 14%, transparent);
+  background-color: color-mix(in oklab, var(--background) 88%, transparent);
+  box-shadow: 0 20px 40px -34px oklch(0 0 0 / 95%);
+}
+
+/* Section links: a 40px hit area on a 12px label, with an ember rule that marks
+   the section the reader is inside. */
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding-inline: 0.25rem;
+  color: var(--dc-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.25rem;
+  bottom: 0.55rem;
+  height: 1px;
+  border-radius: 9999px;
+  background-color: var(--dc-ember);
+  opacity: 0;
+  transform: scaleX(0.35);
+  transform-origin: left center;
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease-out);
+}
+
+.nav-link:hover {
+  color: var(--dc-text);
+}
+
+.nav-link:hover::after {
+  opacity: 0.5;
+  transform: scaleX(1);
+}
+
+.nav-link[aria-current="true"] {
+  color: var(--dc-text);
+}
+
+.nav-link[aria-current="true"]::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+@media (min-width: 48rem) {
+  .nav-link {
+    padding-inline: 0;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Back to top: the same glass as every other surface, parked where the thumb
+   reaches on a phone. */
+.scroll-top {
+  position: fixed;
+  right: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(1rem, 3vw, 2rem);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border);
+  background-color: var(--glass-fill-strong);
+  color: var(--dc-muted);
+  box-shadow: var(--glass-highlight), var(--shadow-glass);
+  backdrop-filter: blur(calc(var(--glass-blur) * 0.8)) saturate(150%);
+  animation: rise-in var(--dur) var(--ease-out) both;
+  transition:
+    color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur) var(--ease-out);
+}
+
+.scroll-top:hover {
+  color: var(--dc-ember);
+  background-color: var(--glass-fill-raised);
+  transform: translateY(-2px);
+}
+
+.scroll-top:active {
+  transform: none;
+}
+
 /* The console's ambient haze, clipped to the top of the page so the sections
    below keep their own light. */
 .landing-haze {
@@ -636,8 +778,16 @@ html[data-background="room"] body {
   height: 92vh;
   pointer-events: none;
   background-image:
-    radial-gradient(900px 520px at 50% 0%, color-mix(in oklab, var(--dc-ember) 14%, transparent), transparent 70%),
-    radial-gradient(520px 380px at 10% 62%, color-mix(in oklab, var(--dc-ember) 6%, transparent), transparent 75%);
+    radial-gradient(
+      900px 520px at 50% 0%,
+      color-mix(in oklab, var(--dc-ember) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      520px 380px at 10% 62%,
+      color-mix(in oklab, var(--dc-ember) 6%, transparent),
+      transparent 75%
+    );
   mask-image: linear-gradient(to bottom, #000 45%, transparent);
 }
 
@@ -651,8 +801,12 @@ html[data-background="room"] body {
   justify-items: center;
   align-content: start;
   min-height: clamp(520px, 86dvh, 820px);
-  padding-top: clamp(1.25rem, 4.5vh, 3rem);
-  padding-bottom: clamp(7.5rem, 32vw, 14rem);
+  /* The bar is fixed, so the hero has to make the room it takes: the heading
+     sits clearly below the header instead of underneath it. */
+  padding-top: calc(var(--header-h) + clamp(2.5rem, 8vh, 5.5rem));
+  /* Enough for the engraved sentence to breathe, not so much that the hero
+     ends on a dead band of empty page. */
+  padding-bottom: clamp(6rem, 18vw, 10rem);
   overflow: clip;
 }
 
@@ -858,4 +1012,3 @@ html[data-background="room"] body {
     }
   }
 }
-

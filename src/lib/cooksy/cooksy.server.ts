@@ -65,7 +65,12 @@ function token(kind: "agent" | "approver"): string {
 
 async function call<T>(
   path: string,
-  options: { kind: "agent" | "approver"; method?: "GET" | "POST"; body?: unknown; timeoutMs?: number },
+  options: {
+    kind: "agent" | "approver";
+    method?: "GET" | "POST";
+    body?: unknown;
+    timeoutMs?: number;
+  },
 ): Promise<T> {
   const { kind, method = "GET", body, timeoutMs = READ_TIMEOUT_MS } = options;
   let response: Response;
@@ -94,7 +99,8 @@ async function call<T>(
   }
 
   if (!response.ok) {
-    const record = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    const record =
+      parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
     const message =
       typeof record?.["error"] === "string"
         ? record["error"]
@@ -103,7 +109,10 @@ async function call<T>(
           : `cooksy-api answered ${response.status}.`;
     // Keep 4xx statuses (400 bad input, 401/403 auth, 404 missing) so callers can
     // tell "that approval is gone" apart from "the API is down".
-    throw new CooksyError(message, response.status >= 400 && response.status < 500 ? response.status : 502);
+    throw new CooksyError(
+      message,
+      response.status >= 400 && response.status < 500 ? response.status : 502,
+    );
   }
   if (parsed === null) throw new CooksyError("cooksy-api returned an empty answer.", 502);
   return parsed as T;
@@ -127,7 +136,10 @@ export async function getApproval(id: string): Promise<ApprovalRecord | null> {
 }
 
 /** Approve or deny. Approving runs the stored action; denying touches nothing else. */
-export async function decideApproval(id: string, decision: "approve" | "deny"): Promise<DecisionOutcome> {
+export async function decideApproval(
+  id: string,
+  decision: "approve" | "deny",
+): Promise<DecisionOutcome> {
   if (!ID_PATTERN.test(id)) {
     return { ok: false, code: "invalid_id", error: "That approval id is not valid." };
   }
@@ -143,7 +155,11 @@ export async function decideApproval(id: string, decision: "approve" | "deny"): 
     // already decided). That is a real outcome for the card to show, not a failure
     // of the console, so it is returned rather than thrown.
     if (error instanceof CooksyError && error.status >= 400 && error.status < 500) {
-      return { ok: false, code: error.status === 404 ? "not_found" : "refused", error: error.message };
+      return {
+        ok: false,
+        code: error.status === 404 ? "not_found" : "refused",
+        error: error.message,
+      };
     }
     throw error;
   }
@@ -152,9 +168,9 @@ export async function decideApproval(id: string, decision: "approve" | "deny"): 
 /** Pantry, week plan or shopping list — read with the read-only token. */
 export function readKitchen(view: KitchenView): Promise<KitchenData> {
   if (view === "plan") {
-    return call<{ from: string; to: string; entries: PlanEntry[] }>("/plan", { kind: "agent" }).then(
-      ({ from, to, entries }) => ({ view: "plan" as const, from, to, entries }),
-    );
+    return call<{ from: string; to: string; entries: PlanEntry[] }>("/plan", {
+      kind: "agent",
+    }).then(({ from, to, entries }) => ({ view: "plan" as const, from, to, entries }));
   }
   if (view === "shopping") {
     return call<{ items: ShoppingItem[] }>("/shopping", { kind: "agent" }).then(({ items }) => ({

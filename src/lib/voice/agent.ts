@@ -36,8 +36,13 @@ export async function transcribeRecording(
 ): Promise<string> {
   const form = new FormData();
   form.append("file", file, file.name);
-  const response = await fetch("/api/transcribe", { method: "POST", body: form, ...(signal ? { signal } : {}) });
-  if (!response.ok) throw new Error(await readError(response, "Could not understand that recording"));
+  const response = await fetch("/api/transcribe", {
+    method: "POST",
+    body: form,
+    ...(signal ? { signal } : {}),
+  });
+  if (!response.ok)
+    throw new Error(await readError(response, "Could not understand that recording"));
 
   const data = (await response.json()) as { text?: unknown };
   const text = typeof data.text === "string" ? data.text.trim() : "";
@@ -64,7 +69,12 @@ export async function streamAgentAnswer(
   let answer = "";
   let thinking = "";
   await readSse(response, (data) => {
-    const payload = JSON.parse(data) as { type?: string; delta?: string; text?: string; error?: unknown };
+    const payload = JSON.parse(data) as {
+      type?: string;
+      delta?: string;
+      text?: string;
+      error?: unknown;
+    };
     if (payload.error || payload.type === "error") throw new Error("The agent stream failed");
     if (payload.type === "response.reasoning_summary_text.delta" && payload.delta) {
       thinking += payload.delta;

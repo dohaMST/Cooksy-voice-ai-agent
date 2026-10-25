@@ -14,7 +14,8 @@ type Decision = "approve" | "deny";
 function readDecision(body: unknown): { id: string; decision: Decision } {
   if (!body || typeof body !== "object") throw new CooksyError("Send { id, decision }.", 400);
   const { id, decision } = body as { id?: unknown; decision?: unknown };
-  if (typeof id !== "string" || !id.trim()) throw new CooksyError("An approval id is required.", 400);
+  if (typeof id !== "string" || !id.trim())
+    throw new CooksyError("An approval id is required.", 400);
   if (decision !== "approve" && decision !== "deny") {
     throw new CooksyError('decision must be "approve" or "deny".', 400);
   }

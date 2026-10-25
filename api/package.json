@@ -9,7 +9,9 @@
     "test": "node --test",
     "test:integration": "node --env-file=../.env --test test/mongo.integration.test.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "mongodb": "^6.10.0"
   }

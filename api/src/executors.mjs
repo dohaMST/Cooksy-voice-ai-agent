@@ -38,7 +38,9 @@ export function createExecutors(store, { dataDir, resolveRecipes }) {
     async plan_set_meal(args) {
       const existing = await store.findOne("plan_entries", { date: args.date, meal: args.meal });
       if (existing && !args.replace) {
-        throw new Error(`There is already "${existing.recipeName}" planned for ${args.meal} on ${args.date}.`);
+        throw new Error(
+          `There is already "${existing.recipeName}" planned for ${args.meal} on ${args.date}.`,
+        );
       }
       const [recipe] = await resolveRecipes([args.recipeId]);
       const entry = {
@@ -50,7 +52,11 @@ export function createExecutors(store, { dataDir, resolveRecipes }) {
         createdAt: Date.now(),
       };
       if (existing) {
-        await store.updateOne("plan_entries", { date: args.date, meal: args.meal }, { $set: entry });
+        await store.updateOne(
+          "plan_entries",
+          { date: args.date, meal: args.meal },
+          { $set: entry },
+        );
       } else {
         await store.insertOne("plan_entries", entry);
       }

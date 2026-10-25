@@ -43,7 +43,8 @@ function trimMeal(m) {
 /** Search by name, main ingredient, or category. */
 export async function search(query, by = "name", signal) {
   const q = encodeURIComponent(query.trim());
-  const key = by === "ingredient" ? "filter.php?i=" : by === "category" ? "filter.php?c=" : "search.php?s=";
+  const key =
+    by === "ingredient" ? "filter.php?i=" : by === "category" ? "filter.php?c=" : "search.php?s=";
   const data = await fetchJson(`${BASE}/${key}${q}`, withTimeout(signal));
   const meals = data.meals ?? [];
   return meals.map(trimMeal);
@@ -51,7 +52,10 @@ export async function search(query, by = "name", signal) {
 
 /** Full recipe: ingredients with measures, steps, category, area. */
 export async function get(id, signal) {
-  const data = await fetchJson(`${BASE}/lookup.php?i=${encodeURIComponent(id)}`, withTimeout(signal));
+  const data = await fetchJson(
+    `${BASE}/lookup.php?i=${encodeURIComponent(id)}`,
+    withTimeout(signal),
+  );
   const meal = data.meals?.[0];
   if (!meal) throw new UpstreamError("No recipe with that id.");
   const ingredients = [];
@@ -82,7 +86,10 @@ export async function lookupSummaries(ids, signal) {
   const out = [];
   for (const id of ids) {
     try {
-      const data = await fetchJson(`${BASE}/lookup.php?i=${encodeURIComponent(id)}`, withTimeout(signal));
+      const data = await fetchJson(
+        `${BASE}/lookup.php?i=${encodeURIComponent(id)}`,
+        withTimeout(signal),
+      );
       const meal = data.meals?.[0];
       out.push(meal ? trimMeal(meal) : { id, name: null, thumb: null });
     } catch {

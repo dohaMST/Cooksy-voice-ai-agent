@@ -67,13 +67,7 @@ function parseBody(req) {
  * Build the app (routes + gate) against a Store. Exported so the tests can
  * drive it with no network listener and no live MongoDB.
  */
-export function createApp({
-  store,
-  agentToken,
-  approverToken,
-  dataDir = "data",
-  resolveRecipes,
-}) {
+export function createApp({ store, agentToken, approverToken, dataDir = "data", resolveRecipes }) {
   const resolve = resolveRecipes ?? mealdb.lookupSummaries;
   const executors = createExecutors(store, { dataDir, resolveRecipes: resolve });
   const gate = createApprovalGate(
@@ -263,9 +257,7 @@ export async function startServer(config) {
   return { server, close, app, store, port: config.port };
 }
 
-const isMain = process.argv[1]
-  ? import.meta.url === pathToFileURL(process.argv[1]).href
-  : false;
+const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
 
 if (isMain) {
   const { loadConfig } = await import("./config.mjs");
@@ -280,9 +272,7 @@ if (isMain) {
   try {
     const { close } = await startServer(config);
     const target = config.store === "mongo" ? `mongo, db=${config.mongo.dbName}` : "memory";
-    process.stdout.write(
-      `cooksy-api listening on http://${HOST}:${config.port} (${target})\n`,
-    );
+    process.stdout.write(`cooksy-api listening on http://${HOST}:${config.port} (${target})\n`);
     const shutdown = async () => {
       await close();
       process.exit(0);

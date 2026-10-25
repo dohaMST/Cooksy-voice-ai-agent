@@ -38,6 +38,7 @@ floor, not the ceiling.
 Voice in and voice out must work. Here is the stack we recommend:
 
 ### Listening (speech → text)
+
 - The starter already records audio with the browser mic (`getUserMedia` / `AudioContext` in
   `src/lib/voice/record-wav.ts`) and sends it to `/api/transcribe`.
 - That route posts to any Whisper-compatible server. You point it with `OPENCLAW_GATEWAY_URL`.
@@ -46,6 +47,7 @@ Voice in and voice out must work. Here is the stack we recommend:
 - **Cloud options:** any OpenAI-compatible `/v1/audio/transcriptions` endpoint (OpenAI, Groq, etc.).
 
 ### Speaking (text → speech)
+
 - **Baseline:** the starter already uses the Web Speech API (`speechSynthesis`) — free, no setup.
 - **Better quality:** Kokoro or Piper running locally, or a cloud TTS endpoint behind
   `OPENCLAW_SPEECH_MODEL` / `OPENCLAW_SPEECH_VOICE` in your `.env`.
@@ -58,13 +60,13 @@ Configure them, or swap them out. Either is fine.
 
 ## 3. What stays, what goes
 
-| Keep (working infrastructure) | Replace (your work) |
-|---|---|
-| `/api/agent` bridge | All 4 dropdown agents |
+| Keep (working infrastructure)             | Replace (your work)                  |
+| ----------------------------------------- | ------------------------------------ |
+| `/api/agent` bridge                       | All 4 dropdown agents                |
 | `/api/transcribe` and `/api/speak` routes | The `unified-plan.yaml` example plan |
-| The approval panel | The layout, colours, typography |
-| `openclaw/` folder structure | The starter components and screens |
-| The OpenClaw gateway wiring | The `AGENTS` roster in `voice.ts` |
+| The approval panel                        | The layout, colours, typography      |
+| `openclaw/` folder structure              | The starter components and screens   |
+| The OpenClaw gateway wiring               | The `AGENTS` roster in `voice.ts`    |
 
 When in doubt: if it is content or design, make it yours. If it is plumbing, keep it.
 
@@ -103,7 +105,7 @@ small live extension. It is a conversation, not a test. You will hear back from 
 
 ## Appendix — the agent contract
 
-*Skip this until you have started. Come back when you are wiring the agent.*
+_Skip this until you have started. Come back when you are wiring the agent._
 
 ### Plain replies
 
@@ -120,7 +122,7 @@ To drive the console's buttons, choices and voice, return a JSON screen:
     "text": "What the agent says out loud",
     "choices": [
       { "id": "yes", "label": "Yes", "value": "Yes, go ahead" },
-      { "id": "no",  "label": "No",  "value": "Cancel" }
+      { "id": "no", "label": "No", "value": "Cancel" }
     ],
     "navigation": ["home"]
   }

@@ -30,9 +30,7 @@ if (!API_TOKEN) {
   process.exit(1);
 }
 
-const contract = JSON.parse(
-  readFileSync(new URL("./cooksy-tools.json", import.meta.url), "utf8"),
-);
+const contract = JSON.parse(readFileSync(new URL("./cooksy-tools.json", import.meta.url), "utf8"));
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER_INFO = { name: "cooksy", version: "1.0.0" };
 
@@ -127,7 +125,10 @@ rl.on("line", async (line) => {
     if (AGENT && !tool.agents.includes(AGENT)) {
       return reply(id, {
         content: [
-          { type: "text", text: JSON.stringify({ error: `The ${AGENT} agent does not hold "${name}".` }) },
+          {
+            type: "text",
+            text: JSON.stringify({ error: `The ${AGENT} agent does not hold "${name}".` }),
+          },
         ],
         isError: true,
       });

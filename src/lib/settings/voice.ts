@@ -72,7 +72,18 @@ function repairLegacyAsr(): void {
 
 repairLegacyAsr();
 
-export const DEFAULT_VOICE: VoiceSettings = { agent: "cook", engine: "browser", rate: 1, standbyPause: 900, browserVoice: "", kokoroUrl: "http://localhost:8880", kokoroVoice: "af_heart", asrEngine: "cloud", asrUrl: "http://localhost:8000/v1", asrModel: "whisper-1" };
+export const DEFAULT_VOICE: VoiceSettings = {
+  agent: "cook",
+  engine: "browser",
+  rate: 1,
+  standbyPause: 900,
+  browserVoice: "",
+  kokoroUrl: "http://localhost:8880",
+  kokoroVoice: "af_heart",
+  asrEngine: "cloud",
+  asrUrl: "http://localhost:8000/v1",
+  asrModel: "whisper-1",
+};
 
 /**
  * Saved voice settings, with a stale agent id healed to the default.
@@ -82,7 +93,10 @@ export const DEFAULT_VOICE: VoiceSettings = { agent: "cook", engine: "browser", 
  * agent the gateway does not have. The value is memoised because
  * useSyncExternalStore compares snapshots by identity.
  */
-export function useVoiceSettings(): [VoiceSettings, (next: VoiceSettings | ((prev: VoiceSettings) => VoiceSettings)) => void] {
+export function useVoiceSettings(): [
+  VoiceSettings,
+  (next: VoiceSettings | ((prev: VoiceSettings) => VoiceSettings)) => void,
+] {
   const [stored, update] = useLocal(VOICE_KEY, DEFAULT_VOICE);
   const value = useMemo(
     () => (stored.agent in AGENTS ? stored : { ...stored, agent: DEFAULT_VOICE.agent }),
@@ -93,13 +107,17 @@ export function useVoiceSettings(): [VoiceSettings, (next: VoiceSettings | ((pre
 
 function speakBrowser(text: string, v: VoiceSettings, signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
-    if (!("speechSynthesis" in window)) return reject(new Error("This browser has no device voice."));
+    if (!("speechSynthesis" in window))
+      return reject(new Error("This browser has no device voice."));
     const u = new SpeechSynthesisUtterance(text);
     u.rate = v.rate;
     const voice = speechSynthesis.getVoices().find((x) => x.name === v.browserVoice);
     if (voice) u.voice = voice;
     u.onend = () => resolve();
-    u.onerror = (e) => (e.error === "interrupted" || e.error === "canceled" ? resolve() : reject(new Error(`Device voice failed: ${e.error}`)));
+    u.onerror = (e) =>
+      e.error === "interrupted" || e.error === "canceled"
+        ? resolve()
+        : reject(new Error(`Device voice failed: ${e.error}`));
     signal?.addEventListener("abort", () => speechSynthesis.cancel(), { once: true });
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
@@ -110,8 +128,17 @@ async function speakKokoro(text: string, v: VoiceSettings, signal?: AbortSignal)
   let res: Response;
   try {
     res = await fetch(`${v.kokoroUrl.replace(/\/$/, "")}/v1/audio/speech`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, signal: signal ?? null,
-      body: JSON.stringify({ model: "kokoro", input: text, voice: v.kokoroVoice, speed: v.rate, response_format: "pcm", stream: true }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: signal ?? null,
+      body: JSON.stringify({
+        model: "kokoro",
+        input: text,
+        voice: v.kokoroVoice,
+        speed: v.rate,
+        response_format: "pcm",
+        stream: true,
+      }),
     });
   } catch (e) {
     if (signal?.aborted) return;

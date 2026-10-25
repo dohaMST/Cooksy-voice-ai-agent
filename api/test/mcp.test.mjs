@@ -87,7 +87,10 @@ test("no approve or deny tool exists, under any name", async (t) => {
   t.after(() => s.close());
   const names = (await s.request("tools/list")).result.tools.map((tool) => tool.name);
   // Approval must stay unreachable from the agent side.
-  assert.deepEqual(names.filter((n) => /approve|deny/i.test(n)), []);
+  assert.deepEqual(
+    names.filter((n) => /approve|deny/i.test(n)),
+    [],
+  );
 });
 
 test("every advertised tool carries a JSON input schema", async (t) => {

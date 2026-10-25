@@ -39,7 +39,8 @@ let shared: AudioContext | null = null;
 /** One context for the whole console, at Kokoro's rate so chunks need no resampling. */
 function ensureContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
-  if (!shared || shared.state === "closed") shared = new AudioContext({ sampleRate: KOKORO_SAMPLE_RATE });
+  if (!shared || shared.state === "closed")
+    shared = new AudioContext({ sampleRate: KOKORO_SAMPLE_RATE });
   if (shared.state === "suspended") void shared.resume();
   return shared;
 }
@@ -78,7 +79,8 @@ export async function playPcmStream(
   // A suspended context never advances its clock, so the drain wait below would
   // never end. Fail loudly instead of hanging on "Playing...".
   if (context.state !== "running") await context.resume().catch(() => undefined);
-  if (context.state !== "running") throw new Error("The browser blocked audio playback. Click the page and try again.");
+  if (context.state !== "running")
+    throw new Error("The browser blocked audio playback. Click the page and try again.");
 
   const rate = options.sampleRate ?? KOKORO_SAMPLE_RATE;
   const playing = new Set<AudioBufferSourceNode>();

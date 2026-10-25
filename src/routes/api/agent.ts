@@ -15,7 +15,8 @@ export const Route = createFileRoute("/api/agent")({
         let modelName: string | undefined;
         try {
           const body = (await request.json()) as { turns?: Turn[]; model?: unknown };
-          if (Array.isArray(body.turns)) turns = body.turns.filter((t) => t && typeof t.text === "string");
+          if (Array.isArray(body.turns))
+            turns = body.turns.filter((t) => t && typeof t.text === "string");
           if (typeof body.model === "string") modelName = body.model;
         } catch {
           turns = [];
@@ -31,7 +32,9 @@ export const Route = createFileRoute("/api/agent")({
         const model = resolveGatewayModel(modelName);
         if (!model) {
           return new Response(
-            JSON.stringify({ error: `${modelName ?? "No agent"} is not one of the agents this console can reach.` }),
+            JSON.stringify({
+              error: `${modelName ?? "No agent"} is not one of the agents this console can reach.`,
+            }),
             { status: 400, headers: { "Content-Type": "application/json" } },
           );
         }

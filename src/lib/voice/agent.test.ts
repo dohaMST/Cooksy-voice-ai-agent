@@ -23,7 +23,10 @@ function recording() {
 }
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 describe("transcribeRecording", () => {
@@ -38,11 +41,16 @@ describe("transcribeRecording", () => {
 
   it("refuses an empty transcript", async () => {
     stubFetch(() => json({ text: "   " }));
-    await assert.rejects(() => transcribeRecording(recording(), () => {}), /didn't hear any speech/);
+    await assert.rejects(
+      () => transcribeRecording(recording(), () => {}),
+      /didn't hear any speech/,
+    );
   });
 
   it("surfaces the server's error message instead of a blank failure", async () => {
-    stubFetch(() => json({ error: "Speech recognition is not configured. Set GROQ_API_KEY." }, 400));
+    stubFetch(() =>
+      json({ error: "Speech recognition is not configured. Set GROQ_API_KEY." }, 400),
+    );
     await assert.rejects(() => transcribeRecording(recording(), () => {}), /not configured/);
   });
 });

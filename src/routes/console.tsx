@@ -22,16 +22,38 @@ import {
 import { recordWav, type Recording } from "@/lib/voice/record-wav";
 import { streamAgentAnswer, transcribeRecording, type Turn } from "@/lib/voice/agent";
 import { transcribeLocal } from "@/lib/voice/local-asr";
-import { BotBubble, InlineKeyboard, StepLog, TypingDots, UserBubble, useRunOptions, type RunStep } from "@/components/chat-bubbles";
+import {
+  BotBubble,
+  InlineKeyboard,
+  StepLog,
+  TypingDots,
+  UserBubble,
+  useRunOptions,
+  type RunStep,
+} from "@/components/chat-bubbles";
 import { getAgents, speakWith, useVoiceSettings } from "@/lib/settings/voice";
 import { GeneralSettings } from "@/components/general-settings";
-import { cleanRaw, normalizeText, parseReply, spokenScreen, stripMarkers, type Command, type Screen } from "@/lib/voice/screen";
+import {
+  cleanRaw,
+  normalizeText,
+  parseReply,
+  spokenScreen,
+  stripMarkers,
+  type Command,
+  type Screen,
+} from "@/lib/voice/screen";
 import { resolveGatewayModel } from "@/lib/ai/models";
 import { useApprovals } from "@/lib/cooksy/console";
 import { KitchenView, PagedScreen, RunStrip, RunView } from "@/components/console-panels";
 import { EmberField, VoiceOrb } from "@/components/ember";
 import { NoticeBar, type Notice, type NoticeTone } from "@/components/notice";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ACCENTS, clampTheme, useApplyTheme, useTheme, type Accent } from "@/lib/settings/theme";
 
 export const Route = createFileRoute("/console")({
@@ -46,7 +68,8 @@ export const Route = createFileRoute("/console")({
       { property: "og:title", content: "Cooksy — talk to your kitchen agents" },
       {
         property: "og:description",
-        content: "A voice console for a kitchen: pantry, week plan and shopping list, with every change gated by your approval.",
+        content:
+          "A voice console for a kitchen: pantry, week plan and shopping list, with every change gated by your approval.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -55,7 +78,8 @@ export const Route = createFileRoute("/console")({
   component: VoiceConsole,
 });
 
-type Stage = "received" | "transcribing" | "planning" | "thinking" | "streaming" | "speaking" | "error";
+type Stage =
+  "received" | "transcribing" | "planning" | "thinking" | "streaming" | "speaking" | "error";
 type View = "talk" | "kitchen" | "run";
 
 const STAGE_LABEL: Record<Stage, string> = {
@@ -149,11 +173,16 @@ function VoiceConsole() {
   const [kitchenVersion, setKitchenVersion] = useState(0);
 
   const addStep = useCallback((label: string, detail?: string, tone?: RunStep["tone"]) => {
-    stepsRef.current = [...stepsRef.current, { label, at: Date.now(), ...(detail ? { detail } : {}), ...(tone ? { tone } : {}) }];
+    stepsRef.current = [
+      ...stepsRef.current,
+      { label, at: Date.now(), ...(detail ? { detail } : {}), ...(tone ? { tone } : {}) },
+    ];
     const steps = stepsRef.current;
     setRun((current) => (current ? { ...current, steps } : current));
   }, []);
-  const resetSteps = () => { stepsRef.current = []; };
+  const resetSteps = () => {
+    stepsRef.current = [];
+  };
 
   const appendMessage = useCallback((message: Message) => {
     messagesRef.current = [...messagesRef.current, message];
@@ -182,7 +211,10 @@ function VoiceConsole() {
       // unknown agent shows the error instead of answering as somebody else.
       const agentLabel = getAgents()[voiceSettings.agent]?.label ?? voiceSettings.agent;
       const model = resolveGatewayModel(voiceSettings.agent);
-      if (!model) throw new Error(`${agentLabel} is not an agent this console can reach. Pick Cook or Planner.`);
+      if (!model)
+        throw new Error(
+          `${agentLabel} is not an agent this console can reach. Pick Cook or Planner.`,
+        );
       addStep("Agent", `${agentLabel} · ${model}`);
       setRun((current) => (current ? { ...current, sender: agentLabel, answer: "" } : current));
 
@@ -192,13 +224,32 @@ function VoiceConsole() {
         turns,
         {
           onThinking: (reasoning) => {
-            if (!thinking) { thinking = true; addStep("Thinking"); }
+            if (!thinking) {
+              thinking = true;
+              addStep("Thinking");
+            }
             reasoningRef.current = reasoning;
-            setRun((current) => current ? { ...current, reasoning, stage: current.stage === "streaming" ? current.stage : "thinking" } : current);
+            setRun((current) =>
+              current
+                ? {
+                    ...current,
+                    reasoning,
+                    stage: current.stage === "streaming" ? current.stage : "thinking",
+                  }
+                : current,
+            );
           },
           onAnswer: (text) => {
-            if (!writing) { writing = true; addStep("Writing reply"); }
-            if (opts.typing) setRun((current) => (current ? { ...current, answer: stripMarkers(cleanRaw(text)).text, stage: "streaming" } : current));
+            if (!writing) {
+              writing = true;
+              addStep("Writing reply");
+            }
+            if (opts.typing)
+              setRun((current) =>
+                current
+                  ? { ...current, answer: stripMarkers(cleanRaw(text)).text, stage: "streaming" }
+                  : current,
+              );
           },
         },
         signal,
@@ -210,28 +261,48 @@ function VoiceConsole() {
       const screen: Screen = parseReply(raw);
       for (const command of screen.commands ?? []) {
         const result = commandRef.current(command);
-        addStep(result ? "Applied" : "Not available", result ?? `${command.name} ${command.value}`.trim(), result ? undefined : "error");
+        addStep(
+          result ? "Applied" : "Not available",
+          result ?? `${command.name} ${command.value}`.trim(),
+          result ? undefined : "error",
+        );
       }
       if (screen.actionProposal) {
-        addStep("Approval waiting", `${normalizeText(screen.actionProposal.title)} · ${screen.actionProposal.tool}`, "warn");
+        addStep(
+          "Approval waiting",
+          `${normalizeText(screen.actionProposal.title)} · ${screen.actionProposal.tool}`,
+          "warn",
+        );
       }
-      addStep("Reply ready", `${screen.choices.length} button${screen.choices.length === 1 ? "" : "s"}`);
+      addStep(
+        "Reply ready",
+        `${screen.choices.length} button${screen.choices.length === 1 ? "" : "s"}`,
+      );
       if (opts.speak) addStep("Speaking");
-      appendMessage({ id: newId(), role: "assistant", text: screen.text, screen, reasoning: reasoningRef.current, at: Date.now(), steps: stepsRef.current, sender: agentLabel });
+      appendMessage({
+        id: newId(),
+        role: "assistant",
+        text: screen.text,
+        screen,
+        reasoning: reasoningRef.current,
+        at: Date.now(),
+        steps: stepsRef.current,
+        sender: agentLabel,
+      });
       setRun(null);
       if (!opts.speak) return;
       try {
         setSpeaking(true);
         await speakWith(voiceSettings, spokenScreen(screen), signal);
       } catch (error) {
-        if (!signal.aborted) showNotice("error", error instanceof Error ? error.message : "The voice engine failed");
+        if (!signal.aborted)
+          showNotice("error", error instanceof Error ? error.message : "The voice engine failed");
       } finally {
         setSpeaking(false);
       }
     },
     [addStep, appendMessage, showNotice],
   );
-
 
   const sendText = useCallback(
     (text: string) => {
@@ -244,11 +315,24 @@ function VoiceConsole() {
       const history = appendMessage({ id: newId(), role: "user", text, at: Date.now() });
       const controller = new AbortController();
       abortRef.current = controller;
-      setRun({ stage: "planning", heard: text, answer: "", reasoning: "", steps: stepsRef.current });
+      setRun({
+        stage: "planning",
+        heard: text,
+        answer: "",
+        reasoning: "",
+        steps: stepsRef.current,
+      });
       void runAgent(history, controller.signal)
         .catch((error) => {
           if (controller.signal.aborted) return setRun(null);
-          setRun({ stage: "error", heard: "", answer: "", reasoning: "", error: error instanceof Error ? error.message : "That step failed", steps: stepsRef.current });
+          setRun({
+            stage: "error",
+            heard: "",
+            answer: "",
+            reasoning: "",
+            error: error instanceof Error ? error.message : "That step failed",
+            steps: stepsRef.current,
+          });
         })
         .finally(() => {
           abortRef.current = null;
@@ -268,10 +352,18 @@ function VoiceConsole() {
         setRun((current) => (current ? { ...current, stage: "transcribing" } : current));
         addStep("Transcribing");
         const selectedVoice = settingsRef.current.voice;
-        const onPartial = (partial: string) => setRun((current) => (current ? { ...current, heard: partial } : current));
-        const heard = selectedVoice.asrEngine === "local"
-          ? await transcribeLocal(file, selectedVoice.asrUrl, selectedVoice.asrModel, onPartial, controller.signal)
-          : await transcribeRecording(file, onPartial, controller.signal);
+        const onPartial = (partial: string) =>
+          setRun((current) => (current ? { ...current, heard: partial } : current));
+        const heard =
+          selectedVoice.asrEngine === "local"
+            ? await transcribeLocal(
+                file,
+                selectedVoice.asrUrl,
+                selectedVoice.asrModel,
+                onPartial,
+                controller.signal,
+              )
+            : await transcribeRecording(file, onPartial, controller.signal);
         const userMessage: Message = { id: newId(), role: "user", text: heard, at: Date.now() };
         addStep("Heard", heard.length > 60 ? `${heard.slice(0, 60)}…` : heard);
         const history = appendMessage(userMessage);
@@ -283,7 +375,14 @@ function VoiceConsole() {
           return;
         }
         const message = error instanceof Error ? error.message : "Something went wrong";
-        setRun({ stage: "error", heard: "", answer: "", reasoning: "", error: message, steps: stepsRef.current });
+        setRun({
+          stage: "error",
+          heard: "",
+          answer: "",
+          reasoning: "",
+          error: message,
+          steps: stepsRef.current,
+        });
       } finally {
         abortRef.current = null;
       }
@@ -301,7 +400,10 @@ function VoiceConsole() {
       setIsRecording(true);
       startingRef.current = false;
       // Released before the microphone finished opening: finish the turn now.
-      if (releaseRef.current) { releaseRef.current = false; void stopRecordingRef.current(); }
+      if (releaseRef.current) {
+        releaseRef.current = false;
+        void stopRecordingRef.current();
+      }
     } catch {
       startingRef.current = false;
       setRun({
@@ -317,7 +419,10 @@ function VoiceConsole() {
 
   const stopRecording = useCallback(async () => {
     const recording = recordingRef.current;
-    if (!recording) { if (startingRef.current) releaseRef.current = true; return; }
+    if (!recording) {
+      if (startingRef.current) releaseRef.current = true;
+      return;
+    }
     recordingRef.current = null;
     setIsRecording(false);
     setLevel(0);
@@ -326,7 +431,14 @@ function VoiceConsole() {
       void finishTurn(file);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Recording failed";
-      setRun({ stage: "error", heard: "", answer: "", reasoning: "", error: message, steps: stepsRef.current });
+      setRun({
+        stage: "error",
+        heard: "",
+        answer: "",
+        reasoning: "",
+        error: message,
+        steps: stepsRef.current,
+      });
     }
   }, [finishTurn]);
   stopRecordingRef.current = stopRecording;
@@ -346,7 +458,13 @@ function VoiceConsole() {
     const controller = new AbortController();
     abortRef.current = controller;
     stepsRef.current = [{ label: "Retry", detail: "same question", at: Date.now() }];
-    setRun({ stage: "planning", heard: lastUser.text, answer: "", reasoning: "", steps: stepsRef.current });
+    setRun({
+      stage: "planning",
+      heard: lastUser.text,
+      answer: "",
+      reasoning: "",
+      steps: stepsRef.current,
+    });
     void runAgent(history, controller.signal)
       .catch((error) => {
         if (controller.signal.aborted) return setRun(null);
@@ -373,7 +491,10 @@ function VoiceConsole() {
   const standbyRef = useRef({ heard: false, lastLoud: 0 });
   useEffect(() => {
     if (!standby || busy || speaking || isRecording || settingsOpen) return;
-    const t = window.setTimeout(() => { standbyRef.current = { heard: false, lastLoud: Date.now() }; void startRecording(); }, 250);
+    const t = window.setTimeout(() => {
+      standbyRef.current = { heard: false, lastLoud: Date.now() };
+      void startRecording();
+    }, 250);
     return () => window.clearTimeout(t);
   }, [standby, busy, speaking, isRecording, settingsOpen, startRecording]);
   useEffect(() => {
@@ -381,15 +502,25 @@ function VoiceConsole() {
     const t = window.setInterval(() => {
       const lv = recordingRef.current?.level() ?? 0;
       const st = standbyRef.current;
-      if (lv > 0.06) { st.heard = true; st.lastLoud = Date.now(); }
-      else if (st.heard && Date.now() - st.lastLoud > voice.standbyPause) { st.heard = false; void stopRecording(); }
+      if (lv > 0.06) {
+        st.heard = true;
+        st.lastLoud = Date.now();
+      } else if (st.heard && Date.now() - st.lastLoud > voice.standbyPause) {
+        st.heard = false;
+        void stopRecording();
+      }
     }, 80);
     return () => window.clearInterval(t);
   }, [standby, isRecording, voice.standbyPause, stopRecording]);
 
   const toggleStandby = useCallback(() => {
     setStandby((on) => {
-      if (on && recordingRef.current) { recordingRef.current.cancel(); recordingRef.current = null; setIsRecording(false); setLevel(0); }
+      if (on && recordingRef.current) {
+        recordingRef.current.cancel();
+        recordingRef.current = null;
+        setIsRecording(false);
+        setLevel(0);
+      }
       return !on;
     });
   }, []);
@@ -425,11 +556,19 @@ function VoiceConsole() {
         if (!m) return null;
         const key = m[1] as "blur" | "glass" | "radius";
         let applied = 0;
-        setTheme((p) => { const next = clampTheme({ ...p, [key]: Number(m[2]) }); applied = next[key]; return next; });
+        setTheme((p) => {
+          const next = clampTheme({ ...p, [key]: Number(m[2]) });
+          applied = next[key];
+          return next;
+        });
         return `${key === "glass" ? "Glass opacity" : key === "blur" ? "Glass blur" : "Corner roundness"} ${applied || m[2]}`;
       }
-      case "open_settings": setSettingsOpen(true); return "General settings opened";
-      case "close_settings": setSettingsOpen(false); return "General settings closed";
+      case "open_settings":
+        setSettingsOpen(true);
+        return "General settings opened";
+      case "close_settings":
+        setSettingsOpen(false);
+        return "General settings closed";
       case "standby":
         if (v !== "on" && v !== "off") return null;
         if ((v === "on") !== standby) toggleStandby();
@@ -448,32 +587,46 @@ function VoiceConsole() {
    * Sends the human's decision. cooksy-api is the only thing that executes, and
    * its answer is the only outcome we report — nothing is assumed to have worked.
    */
-  const decideApproval = useCallback(async (id: string, decision: "approve" | "deny") => {
-    setBusyApproval(id);
-    try {
-      const outcome = await decide(id, decision);
-      if (!outcome) return; // the hook already put the real error on screen
-      if (outcome.ok) {
-        showNotice("success", decision === "approve" ? "Approved and run. The kitchen lists now show the result." : "Denied. Nothing was changed.");
-        setKitchenVersion((n) => n + 1);
-      } else if (outcome.code === "failed") {
-        showNotice("error", `Approved, but the action failed: ${outcome.error ?? "no reason given"}`);
-        setKitchenVersion((n) => n + 1);
-      } else if (outcome.code === "not_found") {
-        showNotice("error", "That approval no longer exists.");
-      } else if (outcome.code === "expired") {
-        showNotice("error", "That approval expired before it was decided.");
-      } else {
-        showNotice("info", `Nothing changed — ${outcome.code.replace(/_/g, " ")}.`);
+  const decideApproval = useCallback(
+    async (id: string, decision: "approve" | "deny") => {
+      setBusyApproval(id);
+      try {
+        const outcome = await decide(id, decision);
+        if (!outcome) return; // the hook already put the real error on screen
+        if (outcome.ok) {
+          showNotice(
+            "success",
+            decision === "approve"
+              ? "Approved and run. The kitchen lists now show the result."
+              : "Denied. Nothing was changed.",
+          );
+          setKitchenVersion((n) => n + 1);
+        } else if (outcome.code === "failed") {
+          showNotice(
+            "error",
+            `Approved, but the action failed: ${outcome.error ?? "no reason given"}`,
+          );
+          setKitchenVersion((n) => n + 1);
+        } else if (outcome.code === "not_found") {
+          showNotice("error", "That approval no longer exists.");
+        } else if (outcome.code === "expired") {
+          showNotice("error", "That approval expired before it was decided.");
+        } else {
+          showNotice("info", `Nothing changed — ${outcome.code.replace(/_/g, " ")}.`);
+        }
+      } finally {
+        setBusyApproval(null);
       }
-    } finally {
-      setBusyApproval(null);
-    }
-  }, [decide, showNotice]);
+    },
+    [decide, showNotice],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "F9") { e.preventDefault(); toggleStandby(); }
+      if (e.key === "F9") {
+        e.preventDefault();
+        toggleStandby();
+      }
       if (e.key === "Escape" && !settingsOpen) stopAll();
     };
     window.addEventListener("keydown", onKey);
@@ -483,7 +636,9 @@ function VoiceConsole() {
   const submitDraft = () => {
     const text = draft.trim();
     if ((!text && !attachment) || busy || isRecording) return;
-    const full = attachment ? `${text || "Please review the attached file."}\n\nAttached file "${attachment.name}":\n${attachment.text}` : text;
+    const full = attachment
+      ? `${text || "Please review the attached file."}\n\nAttached file "${attachment.name}":\n${attachment.text}`
+      : text;
     setDraft("");
     setAttachment(null);
     sendText(full);
@@ -491,9 +646,11 @@ function VoiceConsole() {
   };
   const attach = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 200_000) return showNotice("warn", "That file is too large. Attach a text file under 200 KB.");
+    if (file.size > 200_000)
+      return showNotice("warn", "That file is too large. Attach a text file under 200 KB.");
     const text = await file.text();
-    if (text.includes("\u0000")) return showNotice("warn", "Only text files can be attached (txt, md, json, csv, yaml, log).");
+    if (text.includes("\u0000"))
+      return showNotice("warn", "Only text files can be attached (txt, md, json, csv, yaml, log).");
     setAttachment({ name: file.name, text: text.slice(0, 20_000) });
   };
 
@@ -511,10 +668,16 @@ function VoiceConsole() {
       <aside className="relative z-10 hidden w-60 shrink-0 flex-col border-r border-white/[0.06] bg-black/25 backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:h-dvh xl:w-64">
         <div className="flex items-center gap-2.5 px-5 pb-4 pt-5">
           <Link to="/" aria-label="Cooksy home" className="flex items-center gap-2.5 rounded-lg">
-            <img src="/cooksy-mark.png" alt="" className="size-9 shrink-0 rounded-full object-contain ring-1 ring-primary/20" />
+            <img
+              src="/cooksy-mark.png"
+              alt=""
+              className="size-9 shrink-0 rounded-full object-contain ring-1 ring-primary/20"
+            />
             <span className="text-[17px] font-semibold tracking-tight">Cooksy</span>
           </Link>
-          <span className="ml-auto rounded-full border border-white/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Beta</span>
+          <span className="ml-auto rounded-full border border-white/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            Beta
+          </span>
         </div>
 
         <nav aria-label="Console sections" className="flex-1 space-y-1 px-3">
@@ -526,10 +689,15 @@ function VoiceConsole() {
               aria-current={view === key ? "page" : undefined}
               className={`nav-item ${view === key ? "bg-white/[0.07] text-foreground" : "hover:bg-white/[0.04] hover:text-foreground"}`}
             >
-              <Icon className={`size-4 shrink-0 ${view === key ? "text-primary" : ""}`} aria-hidden />
+              <Icon
+                className={`size-4 shrink-0 ${view === key ? "text-primary" : ""}`}
+                aria-hidden
+              />
               <span>{label}</span>
               {key === "run" && pending.length > 0 && (
-                <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">{pending.length}</span>
+                <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                  {pending.length}
+                </span>
               )}
             </button>
           ))}
@@ -540,22 +708,37 @@ function VoiceConsole() {
             <p className="dc-label text-primary/80">Waiting for you</p>
             <ul className="mt-2 space-y-1.5">
               {pending.slice(0, 3).map((row) => (
-                <li key={row._id} className="truncate text-xs text-foreground/90">{normalizeText(row.title)}</li>
+                <li key={row._id} className="truncate text-xs text-foreground/90">
+                  {normalizeText(row.title)}
+                </li>
               ))}
             </ul>
-            <button type="button" onClick={() => setView("run")} className="mt-2 text-[11px] font-semibold text-primary hover:underline">
+            <button
+              type="button"
+              onClick={() => setView("run")}
+              className="mt-2 text-[11px] font-semibold text-primary hover:underline"
+            >
               Review {pending.length} →
             </button>
           </div>
         )}
 
         <div className="space-y-1 border-t border-white/[0.06] p-3">
-          <button type="button" onClick={() => setSettingsOpen(true)} className="nav-item hover:bg-white/[0.04] hover:text-foreground">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="nav-item hover:bg-white/[0.04] hover:text-foreground"
+          >
             <SlidersHorizontal className="size-4 shrink-0" aria-hidden />
             <span>Settings</span>
           </button>
           <div className="mt-1 flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-            <img src="/cooksy-mark.png" alt="" aria-hidden className="size-5 shrink-0 rounded-full ring-1 ring-primary/20" />
+            <img
+              src="/cooksy-mark.png"
+              alt=""
+              aria-hidden
+              className="size-5 shrink-0 rounded-full ring-1 ring-primary/20"
+            />
             <div className="min-w-0 leading-tight">
               <p className="truncate text-[11px] font-semibold text-foreground/85">Cooksy</p>
               <p className="truncate text-[10px] text-muted-foreground/70">© 2026 Doha Mastour</p>
@@ -571,7 +754,11 @@ function VoiceConsole() {
           <div className="flex items-center gap-2 px-4 py-2.5 sm:px-6">
             <div className="flex items-center gap-2 lg:hidden">
               <Link to="/" aria-label="Cooksy home" className="flex items-center gap-2 rounded-lg">
-                <img src="/cooksy-mark.png" alt="" className="size-7 shrink-0 rounded-full object-contain ring-1 ring-primary/20" />
+                <img
+                  src="/cooksy-mark.png"
+                  alt=""
+                  className="size-7 shrink-0 rounded-full object-contain ring-1 ring-primary/20"
+                />
                 <span className="text-sm font-semibold tracking-tight">Cooksy</span>
               </Link>
             </div>
@@ -590,9 +777,17 @@ function VoiceConsole() {
                 className={`${CHIP} ${standby ? "border-primary/45 bg-primary/10 text-primary" : ""}`}
               >
                 <Radio className={`size-3.5 ${standby ? "animate-pulse" : ""}`} aria-hidden />
-                <span className="sr-only sm:not-sr-only">{standby ? "Standing by" : "Standby"}</span>
+                <span className="sr-only sm:not-sr-only">
+                  {standby ? "Standing by" : "Standby"}
+                </span>
               </button>
-              <button type="button" onClick={() => setSettingsOpen(true)} aria-label="General settings" title="General settings" className={ICON_BUTTON}>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                aria-label="General settings"
+                title="General settings"
+                className={ICON_BUTTON}
+              >
                 <SlidersHorizontal className="size-4" aria-hidden />
               </button>
             </div>
@@ -602,7 +797,6 @@ function VoiceConsole() {
         {/* One scroll container for every view: Talk scrolls its stream, Kitchen and
             Run scroll their own content, and the floating nav never covers it. */}
         <div className="scroll-thin mx-auto flex w-full max-w-4xl min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4 pt-4 sm:px-6 lg:pb-6">
-
           {view === "talk" && (
             <section className="flex min-h-0 flex-1 flex-col">
               {empty ? (
@@ -613,34 +807,53 @@ function VoiceConsole() {
                   <div className="my-auto">
                     <div className="relative mx-auto grid size-22 place-items-center sm:size-32 [@media(max-height:640px)]:size-20">
                       <VoiceOrb level={level} active={isRecording} />
-                      <img src="/cooksy-mark.png" alt="" className="size-[86%] rounded-full object-contain ring-1 ring-primary/25 sm:size-24" />
+                      <img
+                        src="/cooksy-mark.png"
+                        alt=""
+                        className="size-[86%] rounded-full object-contain ring-1 ring-primary/25 sm:size-24"
+                      />
                     </div>
                     <h1 className="mt-3 text-[26px] font-semibold sm:mt-6 sm:text-4xl">
                       Welcome to <span className="text-primary">Cooksy</span>
                     </h1>
                     <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground [@media(max-height:640px)]:hidden">
-                      Two agents, one kitchen. Cook reads what you have, Planner proposes what to change — and nothing is written without your approval.
+                      Two agents, one kitchen. Cook reads what you have, Planner proposes what to
+                      change — and nothing is written without your approval.
                     </p>
-                    <p className="mt-3 font-mono text-[11px] text-muted-foreground/70">hold the mic · F9 standby · Esc stop</p>
+                    <p className="mt-3 font-mono text-[11px] text-muted-foreground/70">
+                      hold the mic · F9 standby · Esc stop
+                    </p>
                   </div>
                 </div>
               ) : (
                 <>
                   <RunStrip level={level} active={isRecording} stage={run?.stage} />
-                  <div ref={scrollRef} className="scroll-thin mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto pb-2 pr-1">
+                  <div
+                    ref={scrollRef}
+                    className="scroll-thin mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto pb-2 pr-1"
+                  >
                     {messages.map((message) =>
                       message.role === "user" ? (
                         <UserBubble key={message.id} text={message.text} at={message.at} />
                       ) : (
                         <div key={message.id} className="space-y-1.5">
-                          <BotBubble sender={`Cooksy${message.sender ? ` · ${message.sender}` : ""}`} at={message.at}>
+                          <BotBubble
+                            sender={`Cooksy${message.sender ? ` · ${message.sender}` : ""}`}
+                            at={message.at}
+                          >
                             <PagedScreen
                               text={message.text}
-                              screen={message.id === messages[messages.length - 1]?.id ? message.screen : undefined}
+                              screen={
+                                message.id === messages[messages.length - 1]?.id
+                                  ? message.screen
+                                  : undefined
+                              }
                               disabled={busy || isRecording}
                               onSend={sendText}
                             />
-                            {message.steps && <StepLog steps={message.steps} defaultOpen={runOptions.expandSteps} />}
+                            {message.steps && (
+                              <StepLog steps={message.steps} defaultOpen={runOptions.expandSteps} />
+                            )}
                           </BotBubble>
                           <div className="flex flex-wrap items-center gap-1 pl-1">
                             <button
@@ -656,13 +869,40 @@ function VoiceConsole() {
                             >
                               <ThumbsUp className="size-3" aria-hidden /> Useful
                             </button>
-                            <button type="button" onClick={retry} disabled={busy} className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50">
+                            <button
+                              type="button"
+                              onClick={retry}
+                              disabled={busy}
+                              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
+                            >
                               <RotateCcw className="size-3" aria-hidden /> Retry
                             </button>
-                            <button type="button" onClick={() => setOpenDetails((current) => (current === message.id ? null : message.id))} className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenDetails((current) =>
+                                  current === message.id ? null : message.id,
+                                )
+                              }
+                              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                            >
                               <ListTree className="size-3" aria-hidden /> Thinking
                             </button>
-                            <button type="button" onClick={() => { setSpeaking(true); void speakWith(voice, message.text).catch((e: unknown) => showNotice("error", e instanceof Error ? e.message : "The voice engine failed")).finally(() => setSpeaking(false)); }} className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpeaking(true);
+                                void speakWith(voice, message.text)
+                                  .catch((e: unknown) =>
+                                    showNotice(
+                                      "error",
+                                      e instanceof Error ? e.message : "The voice engine failed",
+                                    ),
+                                  )
+                                  .finally(() => setSpeaking(false));
+                              }}
+                              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                            >
                               <Volume2 className="size-3" aria-hidden /> Replay
                             </button>
                           </div>
@@ -670,7 +910,8 @@ function VoiceConsole() {
                             <div className="panel p-4">
                               <p className="dc-label">Agent thinking</p>
                               <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
-                                {message.reasoning?.trim() || "No thinking summary was returned for this answer."}
+                                {message.reasoning?.trim() ||
+                                  "No thinking summary was returned for this answer."}
                               </p>
                             </div>
                           )}
@@ -678,7 +919,9 @@ function VoiceConsole() {
                       ),
                     )}
 
-                    {run && <StatusCard run={run} onDismiss={() => setRun(null)} onCancel={stopRun} />}
+                    {run && (
+                      <StatusCard run={run} onDismiss={() => setRun(null)} onCancel={stopRun} />
+                    )}
                   </div>
                 </>
               )}
@@ -686,14 +929,22 @@ function VoiceConsole() {
               <NoticeBar notice={notice} onDismiss={dismissNotice} />
 
               <form
-                onSubmit={(e) => { e.preventDefault(); submitDraft(); }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submitDraft();
+                }}
                 className="panel mt-2.5 shrink-0 p-2.5 sm:mt-3 sm:p-3"
               >
                 {attachment && (
                   <div className="mb-1 flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-muted-foreground">
                     <Paperclip className="size-3" aria-hidden />
                     <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
-                    <button type="button" aria-label="Remove attachment" onClick={() => setAttachment(null)} className="hover:text-foreground">
+                    <button
+                      type="button"
+                      aria-label="Remove attachment"
+                      onClick={() => setAttachment(null)}
+                      className="hover:text-foreground"
+                    >
                       <XIcon className="size-3" aria-hidden />
                     </button>
                   </div>
@@ -705,7 +956,12 @@ function VoiceConsole() {
                   rows={1}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitDraft(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submitDraft();
+                    }
+                  }}
                   placeholder="Ask anything, or hold to talk…"
                   aria-label="Message"
                   className="block max-h-40 min-h-11 w-full resize-none bg-transparent px-2 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
@@ -717,7 +973,9 @@ function VoiceConsole() {
                     <Select
                       name="agent"
                       value={voice.agent}
-                      onValueChange={(value) => setVoice((previous) => ({ ...previous, agent: value }))}
+                      onValueChange={(value) =>
+                        setVoice((previous) => ({ ...previous, agent: value }))
+                      }
                     >
                       <SelectTrigger
                         aria-label="Agent"
@@ -741,7 +999,11 @@ function VoiceConsole() {
                       aria-pressed={runOptions.speak}
                       className={`${CHIP} ${runOptions.speak ? "border-primary/45 bg-primary/10 text-primary" : ""}`}
                     >
-                      {runOptions.speak ? <Volume2 className="size-3.5" aria-hidden /> : <VolumeX className="size-3.5" aria-hidden />}
+                      {runOptions.speak ? (
+                        <Volume2 className="size-3.5" aria-hidden />
+                      ) : (
+                        <VolumeX className="size-3.5" aria-hidden />
+                      )}
                       <span className="sr-only sm:not-sr-only">Speak</span>
                     </button>
 
@@ -755,9 +1017,22 @@ function VoiceConsole() {
                       <span className="sr-only sm:not-sr-only">Standby</span>
                     </button>
 
-                    <label className={`${CHIP} cursor-pointer px-2.5`} aria-label="Attach a text file">
+                    <label
+                      className={`${CHIP} cursor-pointer px-2.5`}
+                      aria-label="Attach a text file"
+                    >
                       <Paperclip className="size-3.5" aria-hidden />
-                      <input type="file" id="composer-attachment" name="attachment" className="sr-only" accept=".txt,.md,.json,.csv,.yaml,.yml,.log,text/*" onChange={(e) => { void attach(e.target.files?.[0]); e.target.value = ""; }} />
+                      <input
+                        type="file"
+                        id="composer-attachment"
+                        name="attachment"
+                        className="sr-only"
+                        accept=".txt,.md,.json,.csv,.yaml,.yml,.log,text/*"
+                        onChange={(e) => {
+                          void attach(e.target.files?.[0]);
+                          e.target.value = "";
+                        }}
+                      />
                     </label>
                   </div>
 
@@ -789,12 +1064,21 @@ function VoiceConsole() {
                 </div>
               </form>
 
-              <p className="mt-2 shrink-0 text-center font-mono text-[10px] text-muted-foreground/70" aria-live="polite">
+              <p
+                className="mt-2 shrink-0 text-center font-mono text-[10px] text-muted-foreground/70"
+                aria-live="polite"
+              >
                 {isRecording
-                  ? standby ? "standing by… pause to send" : "listening… release to send"
-                  : busy ? "agent is running · Esc stop"
-                  : speaking ? "speaking · Esc stop"
-                  : empty ? "two agents · every write needs your approval" : "hold to talk · F9 standby · Esc stop"}
+                  ? standby
+                    ? "standing by… pause to send"
+                    : "listening… release to send"
+                  : busy
+                    ? "agent is running · Esc stop"
+                    : speaking
+                      ? "speaking · Esc stop"
+                      : empty
+                        ? "two agents · every write needs your approval"
+                        : "hold to talk · F9 standby · Esc stop"}
               </p>
               {(busy || speaking) && (
                 <button
@@ -811,7 +1095,9 @@ function VoiceConsole() {
           {view === "kitchen" && (
             <div className="rise-in py-2">
               <h2 className="text-xl font-semibold">Kitchen</h2>
-              <p className="mt-1 text-sm text-muted-foreground">What you have, what is planned, and what still has to be bought.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                What you have, what is planned, and what still has to be bought.
+              </p>
               <KitchenView key={kitchenVersion} />
             </div>
           )}
@@ -819,13 +1105,19 @@ function VoiceConsole() {
           {view === "run" && (
             <div className="rise-in py-2">
               <h2 className="text-xl font-semibold">Run</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The live turn, every approval waiting on you, and the route behind the answer.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The live turn, every approval waiting on you, and the route behind the answer.
+              </p>
               <NoticeBar notice={notice} onDismiss={dismissNotice} />
               <RunView
                 statusLabel={isRecording ? "Listening" : run ? STAGE_LABEL[run.stage] : "Idle"}
                 turns={messages.length}
                 pending={pending}
-                proposal={messages[messages.length - 1]?.role === "assistant" ? messages[messages.length - 1]?.screen?.actionProposal : null}
+                proposal={
+                  messages[messages.length - 1]?.role === "assistant"
+                    ? messages[messages.length - 1]?.screen?.actionProposal
+                    : null
+                }
                 approvalError={approvalError}
                 busyId={busyApproval}
                 disabled={busy || isRecording}
@@ -880,11 +1172,21 @@ const LIVE_LABEL: Record<Stage, string> = {
 };
 
 /** One live bot message that is edited in place as the run moves through each stage. */
-function StatusCard({ run, onDismiss, onCancel }: { run: Run; onDismiss: () => void; onCancel: () => void }) {
+function StatusCard({
+  run,
+  onDismiss,
+  onCancel,
+}: {
+  run: Run;
+  onDismiss: () => void;
+  onCancel: () => void;
+}) {
   if (run.stage === "error") {
     return (
       <BotBubble sender="Cooksy" at={Date.now()}>
-        <p className="stage-chip text-destructive"><AlertTriangle className="size-3.5" /> Failed</p>
+        <p className="stage-chip text-destructive">
+          <AlertTriangle className="size-3.5" /> Failed
+        </p>
         <p className="mt-2 text-sm text-foreground">{run.error}</p>
         <StepLog steps={run.steps} defaultOpen />
         <InlineKeyboard buttons={[{ key: "ok", label: "Dismiss", onClick: onDismiss }]} />
@@ -892,16 +1194,32 @@ function StatusCard({ run, onDismiss, onCancel }: { run: Run; onDismiss: () => v
     );
   }
   return (
-    <BotBubble sender={`Cooksy${run.sender ? ` · ${run.sender}` : ""}`} at={Date.now()} edited={run.steps.length > 1}>
-      {run.heard && run.stage === "transcribing" && <p className="font-mono text-xs text-muted-foreground">heard: <span className="text-foreground">{run.heard}</span></p>}
+    <BotBubble
+      sender={`Cooksy${run.sender ? ` · ${run.sender}` : ""}`}
+      at={Date.now()}
+      edited={run.steps.length > 1}
+    >
+      {run.heard && run.stage === "transcribing" && (
+        <p className="font-mono text-xs text-muted-foreground">
+          heard: <span className="text-foreground">{run.heard}</span>
+        </p>
+      )}
       {run.answer ? (
-        <p className="caret whitespace-pre-wrap text-sm leading-relaxed text-foreground">{run.answer}</p>
+        <p className="caret whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {run.answer}
+        </p>
       ) : run.reasoning ? (
-        <p className="line-clamp-3 font-mono text-xs leading-relaxed text-muted-foreground">{run.reasoning}</p>
+        <p className="line-clamp-3 font-mono text-xs leading-relaxed text-muted-foreground">
+          {run.reasoning}
+        </p>
       ) : null}
-      <p className="mt-1"><TypingDots label={LIVE_LABEL[run.stage]} /></p>
+      <p className="mt-1">
+        <TypingDots label={LIVE_LABEL[run.stage]} />
+      </p>
       <StepLog steps={run.steps} defaultOpen live />
-      <InlineKeyboard buttons={[{ key: "cancel", label: "✕ Cancel", onClick: onCancel, tone: "danger" }]} />
+      <InlineKeyboard
+        buttons={[{ key: "cancel", label: "✕ Cancel", onClick: onCancel, tone: "danger" }]}
+      />
     </BotBubble>
   );
 }

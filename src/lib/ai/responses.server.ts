@@ -50,18 +50,29 @@ export async function streamResponses(
 }
 
 /** Streams from OpenClaw Gateway (/v1/chat/completions) and re-emits deltas as Responses-style SSE events. */
-async function streamChatAsResponses(request: Request, input: Record<string, unknown>[], model: string) {
+async function streamChatAsResponses(
+  request: Request,
+  input: Record<string, unknown>[],
+  model: string,
+) {
   const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
   const messages = input.map((m) => ({
     role: m["role"],
     content: ((m["content"] as { text: string }[]) ?? []).map((c) => c.text).join("\n"),
   }));
-  messages.push({ role: "system", content: "Answer in plain spoken sentences. Do not call any tool named JSON, and do not wrap the answer in a code block." });
+  messages.push({
+    role: "system",
+    content:
+      "Answer in plain spoken sentences. Do not call any tool named JSON, and do not wrap the answer in a code block.",
+  });
   try {
     const response = await gateway.fetch(`${GATEWAY_BASE_URL}/v1/chat/completions`, {
       method: "POST",
       signal: request.signal,
-      headers: getGatewayHeaders({ "Content-Type": "application/json", "X-Lovable-AIG-SDK": "fetch" }),
+      headers: getGatewayHeaders({
+        "Content-Type": "application/json",
+        "X-Lovable-AIG-SDK": "fetch",
+      }),
       // No response_format here: OpenClaw always sends its agent toolset, and Groq
       // refuses json_object mode alongside tools ("json mode cannot be combined with
       // tool/function calling"), which failed every model. The system instruction plus
@@ -72,43 +83,62 @@ async function streamChatAsResponses(request: Request, input: Record<string, unk
     if (!response.ok || !response.body) {
       headers.set("Content-Type", "application/json");
       const detail = (await response.text()).slice(0, 300);
-      return new Response(JSON.stringify({ error: `${model} returned ${response.status}: ${detail}` }), { status: response.status, headers });
+      return new Response(
+        JSON.stringify({ error: `${model} returned ${response.status}: ${detail}` }),
+        { status: response.status, headers },
+      );
     }
     headers.set("Content-Type", "text/event-stream");
     headers.set("Cache-Control", "no-cache");
     const enc = new TextEncoder();
     let buf = "";
-    const out = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new TransformStream<string, Uint8Array>({
-      transform(chunk, ctrl) {
-        buf += chunk;
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          const data = line.startsWith("data:") ? line.slice(5).trim() : "";
-          if (!data || data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data) as {
-              choices?: { delta?: { content?: string; reasoning_content?: string } }[];
-              error?: { message?: string } | string;
-            };
-            // The gateway streams an upstream failure as a top-level error chunk and
-            // then [DONE]. Without this branch the console would show "empty answer"
-            // instead of the provider's real reason.
-            const failure = typeof parsed.error === "string" ? parsed.error : parsed.error?.message;
-            if (failure) {
-              ctrl.enqueue(enc.encode(`data: ${JSON.stringify({ type: "error", error: failure })}\n\n`));
-              continue;
+    const out = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(
+      new TransformStream<string, Uint8Array>({
+        transform(chunk, ctrl) {
+          buf += chunk;
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            const data = line.startsWith("data:") ? line.slice(5).trim() : "";
+            if (!data || data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data) as {
+                choices?: { delta?: { content?: string; reasoning_content?: string } }[];
+                error?: { message?: string } | string;
+              };
+              // The gateway streams an upstream failure as a top-level error chunk and
+              // then [DONE]. Without this branch the console would show "empty answer"
+              // instead of the provider's real reason.
+              const failure =
+                typeof parsed.error === "string" ? parsed.error : parsed.error?.message;
+              if (failure) {
+                ctrl.enqueue(
+                  enc.encode(`data: ${JSON.stringify({ type: "error", error: failure })}\n\n`),
+                );
+                continue;
+              }
+              const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+              if (reasoning) {
+                ctrl.enqueue(
+                  enc.encode(
+                    `data: ${JSON.stringify({ type: "response.reasoning_summary_text.delta", delta: reasoning })}\n\n`,
+                  ),
+                );
+              }
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta)
+                ctrl.enqueue(
+                  enc.encode(
+                    `data: ${JSON.stringify({ type: "response.output_text.delta", delta })}\n\n`,
+                  ),
+                );
+            } catch {
+              /* partial line */
             }
-            const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
-            if (reasoning) {
-              ctrl.enqueue(enc.encode(`data: ${JSON.stringify({ type: "response.reasoning_summary_text.delta", delta: reasoning })}\n\n`));
-            }
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) ctrl.enqueue(enc.encode(`data: ${JSON.stringify({ type: "response.output_text.delta", delta })}\n\n`));
-          } catch { /* partial line */ }
-        }
-      },
-    }));
+          }
+        },
+      }),
+    );
     return new Response(out, { status: 200, headers });
   } catch (error) {
     if (request.signal.aborted) return new Response(null, { status: 499 });

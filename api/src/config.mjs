@@ -46,9 +46,7 @@ export function loadConfig(env = process.env) {
 
   // The whole two-credential gate collapses if these are the same value.
   if (agentToken === approverToken) {
-    throw new ConfigError(
-      "COOKSY_API_TOKEN and COOKSY_APPROVER_TOKEN must be different values.",
-    );
+    throw new ConfigError("COOKSY_API_TOKEN and COOKSY_APPROVER_TOKEN must be different values.");
   }
 
   const port = Number(read(env, "COOKSY_API_PORT", { fallback: "4010" }));

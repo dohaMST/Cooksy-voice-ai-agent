@@ -4,12 +4,17 @@ import { normalizeText, parseReply, parseScreen, stripMarkers } from "./screen.t
 
 describe("parseScreen", () => {
   it("accepts a screen without the redundant kind discriminator", () => {
-    const screen = parseScreen(JSON.stringify({ screen: { text: "Hello!", choices: [] }, app_commands: [] }));
+    const screen = parseScreen(
+      JSON.stringify({ screen: { text: "Hello!", choices: [] }, app_commands: [] }),
+    );
     assert.equal(screen?.text, "Hello!");
   });
 
   it("still refuses a wrong kind", () => {
-    assert.equal(parseScreen(JSON.stringify({ kind: "error", screen: { text: "x", choices: [] } })), null);
+    assert.equal(
+      parseScreen(JSON.stringify({ kind: "error", screen: { text: "x", choices: [] } })),
+      null,
+    );
   });
 
   it("refuses prose and malformed JSON", () => {
@@ -18,24 +23,36 @@ describe("parseScreen", () => {
   });
 
   it("keeps a proposal only when every field the card needs is present", () => {
-    const full = parseScreen(JSON.stringify({
-      screen: { text: "Waiting for approval.", choices: [] },
-      action_proposal: { id: "a1", title: "Add milk", tool: "cooksy__pantry_update", summary: "Adds 2 l of milk", risk: "low" },
-    }));
+    const full = parseScreen(
+      JSON.stringify({
+        screen: { text: "Waiting for approval.", choices: [] },
+        action_proposal: {
+          id: "a1",
+          title: "Add milk",
+          tool: "cooksy__pantry_update",
+          summary: "Adds 2 l of milk",
+          risk: "low",
+        },
+      }),
+    );
     assert.equal(full?.actionProposal?.id, "a1");
     assert.equal(full?.actionProposal?.risk, "low");
 
-    const partial = parseScreen(JSON.stringify({
-      screen: { text: "Waiting for approval.", choices: [] },
-      action_proposal: { id: "a1", title: "Add milk" },
-    }));
+    const partial = parseScreen(
+      JSON.stringify({
+        screen: { text: "Waiting for approval.", choices: [] },
+        action_proposal: { id: "a1", title: "Add milk" },
+      }),
+    );
     // An incomplete proposal is invalid output, not a silently half-rendered card.
     assert.equal(partial, null);
   });
 
   it("folds the narrow no-break space gpt-oss emits into a plain space", () => {
     assert.equal(normalizeText("add 2\u202fl of milk"), "add 2 l of milk");
-    const screen = parseScreen(JSON.stringify({ screen: { text: "Use 2\u202fl of milk", choices: [] } }));
+    const screen = parseScreen(
+      JSON.stringify({ screen: { text: "Use 2\u202fl of milk", choices: [] } }),
+    );
     assert.equal(screen?.text, "Use 2 l of milk");
   });
 });
@@ -58,7 +75,10 @@ describe("parseReply", () => {
     const { text, commands } = stripMarkers("Done. [[tab:nope]] [[rate:9]] [[agent:intruder]]");
     assert.equal(text, "Done.");
     // set_agent is passed through here and validated against the roster on apply.
-    assert.deepEqual(commands.filter((c) => c.name !== "set_agent"), []);
+    assert.deepEqual(
+      commands.filter((c) => c.name !== "set_agent"),
+      [],
+    );
   });
 
   it("still honours a structured screen when the model volunteers one", () => {

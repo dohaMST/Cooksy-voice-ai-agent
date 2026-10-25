@@ -29,7 +29,8 @@ async function getApprovals(since: number): Promise<ApprovalsPage> {
     headers: CONSOLE_HEADERS,
     cache: "no-store",
   });
-  if (!response.ok) throw new Error(await failure(response, "The approval queue could not be read."));
+  if (!response.ok)
+    throw new Error(await failure(response, "The approval queue could not be read."));
   return (await response.json()) as ApprovalsPage;
 }
 
@@ -47,7 +48,10 @@ async function postDecision(id: string, decision: "approve" | "deny"): Promise<D
 }
 
 async function getKitchen(view: KitchenView): Promise<KitchenData> {
-  const response = await fetch(`/api/kitchen?view=${view}`, { headers: CONSOLE_HEADERS, cache: "no-store" });
+  const response = await fetch(`/api/kitchen?view=${view}`, {
+    headers: CONSOLE_HEADERS,
+    cache: "no-store",
+  });
   if (!response.ok) throw new Error(await failure(response, "That list could not be read."));
   return (await response.json()) as KitchenData;
 }
