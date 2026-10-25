@@ -1,0 +1,4 @@
+[cook/sessions/cook/0bdcfea3-5f05-41fc-91a3-a31beab79d60#L5] User: What is in my pantry? Answer in one short sentence.
+[cook/sessions/cook/0bdcfea3-5f05-41fc-91a3-a31beab79d60#L8] Assistant: You have 2 l whole milk, 6 pcs free-range eggs, 1 kg basmati rice, 3 pieces lemons, 250 g butter, and 2 kg apples.
+[cook/sessions/cook/2a1ddf31-b05a-484c-80fc-56244bb4e440#L5] User: [Chat messages since your last reply - for context] User: What is in my pantry? Answer in one short sentence. Assistant: You have 2 l whole milk, 6 pcs free-range eggs, 1 kg basmati rice, 3 pieces lemons, 250 g butter, and 2 kg apples. [Current message - respond to this] Us
+[cook/sessions/cook/2a1ddf31-b05a-484c-80fc-56244bb4e440#L8] Assistant: Your pantry has 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 g butter, and 2 kg apples.

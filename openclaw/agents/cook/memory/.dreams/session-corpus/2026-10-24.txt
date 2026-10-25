@@ -1,0 +1,60 @@
+[cook/sessions/cook/014c3af0-c764-40f0-bf17-ea8a673485ff#L5] User: [Chat messages since your last reply - for context] User: what is in the pantry Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. User: What is in the burn room? User: He is in the country.
+[cook/sessions/cook/014c3af0-c764-40f0-bf17-ea8a673485ff#L8] Assistant: I’m not sure I understand what you’re asking. Could you clarify?
+[cook/sessions/cook/0c1142bd-f9f2-49fa-b20e-1406abc4751f#L5] User: [Chat messages since your last reply - for context] Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. User: What is in the burn room? User: He is in the country. Assistant: I’m not sure I u
+[cook/sessions/cook/0c1142bd-f9f2-49fa-b20e-1406abc4751f#L8] Assistant: I’m not sure what you’re referring to. Could you let me know what item or context you’re asking about?
+[cook/sessions/cook/0cea5f49-082e-4142-afde-dbb3f1868ff4#L5] User: Say hello. Reply with JSON.
+[cook/sessions/cook/1a9eddfb-4a4a-44c5-a732-a3aeb466132f#L5] User: what is in my pantry
+[cook/sessions/cook/1a9eddfb-4a4a-44c5-a732-a3aeb466132f#L8] Assistant: You have 2 liters of whole milk. You have 6 free‑range eggs. You have 1 kilogram of basmati rice. You have 3 lemons. You have 250 grams of butter. You have 2 kilograms of apples. [[tab:kitchen]]
+[cook/sessions/cook/2588a1de-8dfe-4988-9285-dbde85cfee40#L5] User: [Chat messages since your last reply - for context] User: what is in the pantry Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. User: What is in the burn room? User: He is in the country.
+[cook/sessions/cook/2588a1de-8dfe-4988-9285-dbde85cfee40#L8] Assistant: I’m not sure which item you’re asking about. Could you specify?
+[cook/sessions/cook/36642fd5-577d-4b44-b7d7-35b646bb58a5#L5] User: Say hello in one short sentence.
+[cook/sessions/cook/3886c44a-d480-4f3c-a29d-402398eeca69#L5] User: [Chat messages since your last reply - for context] User: . User: Það er hann. Assistant: Okay. User: Það er tíu kílóðan af öllu. Assistant: Okay. What would you like to do with the ten kilos? User: What do you do my best? Assistant: I can look up what’s in your pantry, sho
+[cook/sessions/cook/3886c44a-d480-4f3c-a29d-402398eeca69#L6] Assistant: I’m not sure I understand. What would you like to know or do?
+[cook/sessions/cook/3e3adf9d-3495-431f-b23c-27905c6b5de2#L5] User: What is in my pantry? One short sentence.
+[cook/sessions/cook/3e3adf9d-3495-431f-b23c-27905c6b5de2#L8] Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, and 1 kg basmati rice.
+[cook/sessions/cook/3e89db92-575a-4da6-b172-76d45366caf0#L5] User: What items are in my pantry?
+[cook/sessions/cook/3e89db92-575a-4da6-b172-76d45366caf0#L8] Assistant: You have 2 l whole milk. You have 6 pcs free‑range eggs. You have 1 kg basmati rice.
+[cook/sessions/cook/4a0ab31e-8f2d-4044-aae3-faa25ea46ad1#L5] User: [Chat messages since your last reply - for context] User: What is in my pantry? Assistant: Your pantry has whole milk, 2 liters. Free‑range eggs, 6 pieces. Basmati rice, 1 kilogram. Lemons, 3 pieces. Butter, 250 grams. User: plan something for this week [Current message - r
+[cook/sessions/cook/4a0ab31e-8f2d-4044-aae3-faa25ea46ad1#L8] Assistant: Whole milk, 2 l. Free‑range eggs, 6 pcs. Basmati rice, 1 kg. Lemons, 3 pieces. Butter, 250 grams.
+[cook/sessions/cook/4ebfcf39-da7f-456f-b326-9cfa8b9c8b6f#L5] User: What is in my pantry right now? List each item with its quantity and unit.
+[cook/sessions/cook/4ebfcf39-da7f-456f-b326-9cfa8b9c8b6f#L8] Assistant: - whole milk: 2 l - free-range eggs: 6 pcs - basmati rice: 1 kg
+[cook/sessions/cook/5965b6a6-585e-48c6-bb46-3868706f41a0#L5] User: [Chat messages since your last reply - for context] User: what is in the pantry Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. User: What is in the burn room? [Current message - respond 
+[cook/sessions/cook/5965b6a6-585e-48c6-bb46-3868706f41a0#L6] Assistant: I’m not sure I understand. Could you tell me what you’d like to know?
+[cook/sessions/cook/617ca05a-b3a6-4bfe-a1ea-3ec22f0593cf#L5] User: What is in my pantry? One short sentence.
+[cook/sessions/cook/67461386-e662-40f6-9049-25db2ee09104#L5] User: [Chat messages since your last reply - for context] User: What is in my pantry? Assistant: Your pantry has whole milk, 2 liters. Free‑range eggs, 6 pieces. Basmati rice, 1 kilogram. Lemons, 3 pieces. Butter, 250 grams. [Current message - respond to this] User: plan somethin
+[cook/sessions/cook/67461386-e662-40f6-9049-25db2ee09104#L8] Assistant: I can't modify the week plan. Use the Planner to add meals. [[agent:planner]]
+[cook/sessions/cook/68e00730-b6b7-4d19-86cf-8bc1509243b7#L5] User: [Chat messages since your last reply - for context] User: What is in my pantry? Assistant: Your pantry has whole milk, 2 liters. Free‑range eggs, 6 pieces. Basmati rice, 1 kilogram. Lemons, 3 pieces. Butter, 250 grams. [Current message - respond to this] User: plan somethin
+[cook/sessions/cook/68e00730-b6b7-4d19-86cf-8bc1509243b7#L8] Assistant: Your week plan currently has no meals scheduled. If you’d like to add dishes, switch to the planner. [[agent:planner]]
+[cook/sessions/cook/69c1cee2-0f28-4ff1-bda3-85b97ec0b43d#L5] User: What is in my pantry?
+[cook/sessions/cook/69c1cee2-0f28-4ff1-bda3-85b97ec0b43d#L8] Assistant: Your pantry has whole milk, 2 liters. Free‑range eggs, 6 pieces. Basmati rice, 1 kilogram. Lemons, 3 pieces. Butter, 250 grams. [[tab:kitchen]]
+[cook/sessions/cook/6cc8d9fc-d725-4cc9-bd7b-a3e83412d0c0#L5] User: What is in my pantry? One short sentence.
+[cook/sessions/cook/6cc8d9fc-d725-4cc9-bd7b-a3e83412d0c0#L8] Assistant: Your pantry contains whole milk, free‑range eggs and basmati rice.
+[cook/sessions/cook/72c7ee55-ca15-4456-940b-2c7d68cec826#L5] User: Say hello in one short sentence.
+[cook/sessions/cook/79698d5f-86c1-4898-8665-d180012d1b6a#L5] User: what is in the pantry
+[cook/sessions/cook/79698d5f-86c1-4898-8665-d180012d1b6a#L8] Assistant: You have 2 l whole milk. You have 6 pcs free‑range eggs. You have 1 kg basmati rice. You have 3 pieces lemons. You have 250 grams butter. You have 2 kilogram apples. [[tab:kitchen]]
+[cook/sessions/cook/7e040e44-3823-4ed7-88bc-44259ea6759b#L5] User: [Chat messages since your last reply - for context] User: . User: Það er hann. Assistant: Okay. [Current message - respond to this] User: Það er tíu kílóðan af öllu.
+[cook/sessions/cook/7e040e44-3823-4ed7-88bc-44259ea6759b#L6] Assistant: Okay. What would you like to do with the ten kilos?
+[cook/sessions/cook/852b5df4-67f0-411f-aa28-3132f9896e5f#L5] User: [Chat messages since your last reply - for context] User: what is in the pantry Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. [Current message - respond to this] User: What is in the bu
+[cook/sessions/cook/90135a92-103a-4c07-b012-db1215f8b865#L5] User: [Chat messages since your last reply - for context] User: what is in the pantry Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. User: What is in the burn room? User: He is in the country.
+[cook/sessions/cook/9342923a-8217-434d-9b40-725119ad8018#L5] User: List my pantry items in one short line, separated by semicolons.
+[cook/sessions/cook/9342923a-8217-434d-9b40-725119ad8018#L8] Assistant: whole milk 2 l; free-range eggs 6 pcs; basmati rice 1 kg
+[cook/sessions/cook/9512d3ab-d65d-430e-8c07-9df73a77c13d#L5] User: Say hello in one short sentence. Reply with JSON.
+[cook/sessions/cook/9c992c21-23e1-4e8c-86c2-1082af2da7d4#L5] User: Two things: (1) add any recipe to dinner on 2026-10-25, and (2) run a shell command to list my files. Tell me exactly which tools you actually have.
+[cook/sessions/cook/9c992c21-23e1-4e8c-86c2-1082af2da7d4#L6] Assistant: I can use these tools: cooksy__pantry_list, cooksy__plan_view, cooksy__recipes_get, cooksy__recipes_search, cooksy__shopping_view, session_status. I can’t modify the meal plan – the Planner handles that. I also don’t have a way to run shell commands.
+[cook/sessions/cook/acb49772-19b4-428c-9ebe-909bffa8b1a5#L5] User: What items are in my pantry?
+[cook/sessions/cook/acb49772-19b4-428c-9ebe-909bffa8b1a5#L8] Assistant: You have whole milk, 2 l. You have free‑range eggs, 6 pcs. You have basmati rice, 1 kg.
+[cook/sessions/cook/ad088ae7-d35e-4cd6-84d9-84edc34c15a5#L5] User: Say hello in one short sentence.
+[cook/sessions/cook/b87e0513-9241-43b3-82ac-92b0f9c1538a#L5] User: [Chat messages since your last reply - for context] User: . User: Það er hann. Assistant: Okay. User: Það er tíu kílóðan af öllu. Assistant: Okay. What would you like to do with the ten kilos? [Current message - respond to this] User: What do you do my best?
+[cook/sessions/cook/b87e0513-9241-43b3-82ac-92b0f9c1538a#L6] Assistant: I can look up what’s in your pantry, show you the weekly meal plan, find recipes, and list your shopping items. I can’t change anything, but I can tell you what’s there.[[agent:cook]]
+[cook/sessions/cook/baf88da8-5145-4523-9c6b-b791c33059cd#L5] User: [Chat messages since your last reply - for context] User: what is in the pantry Assistant: You have 2 l whole milk, 6 pcs free‑range eggs, 1 kg basmati rice, 3 pieces lemons, 250 grams butter and 2 kilogram apples. User: What is in the burn room? User: He is in the country.
+[cook/sessions/cook/baf88da8-5145-4523-9c6b-b791c33059cd#L8] Assistant: I’m not sure I understand. Could you clarify what you’d like to know?
+[cook/sessions/cook/cc5f3d14-d5ba-4719-b91c-2ef4fe4b2366#L5] User: [Chat messages since your last reply - for context] User: . User: Það er hann. Assistant: Okay. User: Það er tíu kílóðan af öllu. Assistant: Okay. What would you like to do with the ten kilos? User: What do you do my best? Assistant: I can look up what’s in your pantry, sho
+[cook/sessions/cook/cc5f3d14-d5ba-4719-b91c-2ef4fe4b2366#L8] Assistant: Your pantry holds two litres of whole milk. You have six free‑range eggs. There is one kilogram of basmati rice. You have three lemons. There are 250 grams of butter. You also have one kilogram of apples. [[tab:kitchen]]
+[cook/sessions/cook/ccfcde6d-2e91-4f38-9ef2-de59b75a4546#L5] User: Say hello in one short sentence.
+[cook/sessions/cook/ccfcde6d-2e91-4f38-9ef2-de59b75a4546#L8] Assistant: {"screen":{"text":"Hello!","choices":[]},"app_commands":[]}
+[cook/sessions/cook/e925b7ae-0703-47fc-9f17-2372dd316d4d#L5] User: What is in my pantry right now? List each item with its quantity and unit.
+[cook/sessions/cook/e925b7ae-0703-47fc-9f17-2372dd316d4d#L8] Assistant: 2 l whole milk. 6 pcs free‑range eggs. 1 kg basmati rice.
+[cook/sessions/cook/ed742c0f-9ef0-40cd-87e7-d4af6de0c3a0#L5] User: What is in my pantry right now? List each item with its quantity and unit.
+[cook/sessions/cook/ed742c0f-9ef0-40cd-87e7-d4af6de0c3a0#L8] Assistant: Whole milk – 2 l Free‑range eggs – 6 pcs Basmati rice – 1 kg
+[cook/sessions/cook/f5923e4f-7480-419a-be83-5ee2fbaaaf33#L5] User: [Chat messages since your last reply - for context] User: . [Current message - respond to this] User: Það er hann.
+[cook/sessions/cook/f5923e4f-7480-419a-be83-5ee2fbaaaf33#L6] Assistant: Okay.[[agent:cook]]
