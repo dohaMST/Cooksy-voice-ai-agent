@@ -1,0 +1,4 @@
+[cook/sessions/cook/43a787cc-f131-4333-b9ee-e1b2ecba663d#L5] User: [Chat messages since your last reply - for context] User: What is in the pantry? [Current message - respond to this] User: What is in the pantry?
+[cook/sessions/cook/43a787cc-f131-4333-b9ee-e1b2ecba663d#L10] Assistant: Whole milk: 2 l. Free-range eggs: 6 pcs. Lemons: 3 pieces. Butter: 250 grams. Salt: 1 kg. Lemon: 1 kg. Orange: 2 pieces. Banana: 1 kg.
+[cook/sessions/cook/8b106402-5c98-413a-a5d4-9afe4dcc4edb#L5] User: What is in the pantry?
+[cook/sessions/cook/8b106402-5c98-413a-a5d4-9afe4dcc4edb#L8] Assistant: Your pantry has whole milk, two liters, free-range eggs, six pieces, lemons, three pieces, butter, two hundred fifty grams, salt, one kilogram, lemon, one kilogram, orange, two pieces, banana, one kilogram, and rice, one kilogram.

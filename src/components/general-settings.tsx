@@ -28,9 +28,12 @@ const select =
 export function GeneralSettings({
   open,
   onOpenChange,
+  onClearChat,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /** Wipes the conversation saved in this browser; the kitchen data is untouched. */
+  onClearChat?: () => void;
 }) {
   const [v, set] = useVoiceSettings();
   const [theme, setTheme] = useTheme();
@@ -278,8 +281,21 @@ export function GeneralSettings({
             )}
           </TabsContent>
 
-          <TabsContent value="run" className="mt-4">
+          <TabsContent value="run" className="mt-4 space-y-5">
             <RunOptionsControls />
+            {onClearChat && (
+              <div className="space-y-2 border-t border-white/[0.06] pt-4">
+                <p className="text-sm font-semibold">Conversation</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  The transcript is saved in this browser, so it is still here after a reload or a
+                  route change. Clearing it leaves the pantry, the week plan and the shopping list
+                  untouched.
+                </p>
+                <Button variant="outline" size="sm" onClick={onClearChat}>
+                  Clear chat history
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="appearance" className="mt-4 space-y-5">

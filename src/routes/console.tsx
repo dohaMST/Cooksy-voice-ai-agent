@@ -32,6 +32,8 @@ import {
   type RunStep,
 } from "@/components/chat-bubbles";
 import { getAgents, speakWith, useVoiceSettings } from "@/lib/settings/voice";
+import { readLocal, writeLocal } from "@/lib/settings/store";
+import { CHAT_KEY, fromStored, toStored } from "@/lib/chat/persist";
 import { GeneralSettings } from "@/components/general-settings";
 import {
   claimsApproval,
@@ -202,6 +204,38 @@ function VoiceConsole() {
     setMessages(messagesRef.current);
     return messagesRef.current;
   }, []);
+
+  /**
+   * The transcript lives in this browser.
+   *
+   * Read once after hydration — reading localStorage during render would disagree
+   * with the server HTML — then written back on every change. `restored` also gates
+   * the welcome hero, so a returning operator never sees it flash before their
+   * conversation reappears.
+   */
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const saved = fromStored(readLocal<Record<string, unknown>>(CHAT_KEY, {}));
+    if (saved.length) {
+      messagesRef.current = saved;
+      setMessages(saved);
+    }
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    writeLocal(CHAT_KEY, toStored(messages), { silent: true });
+  }, [messages, restored]);
+
+  /** Clearing the chat leaves the kitchen data alone; it is a view over cooksy-api. */
+  const clearChat = useCallback(() => {
+    messagesRef.current = [];
+    setMessages([]);
+    setOpenDetails(null);
+    setRun(null);
+    showNotice("info", "Conversation cleared. Nothing in the kitchen changed.");
+  }, [showNotice]);
 
   // Kept current every render so the post-turn approval check (a timeout, not a
   // render) reads the queue as it stands after the poll that follows the reply.
@@ -804,7 +838,7 @@ function VoiceConsole() {
 
   const active = VIEWS.find((item) => item.key === view) ?? VIEWS[0];
   const ActiveIcon = active.Icon;
-  const empty = messages.length === 0 && !run;
+  const empty = restored && messages.length === 0 && !run;
   const toggleSpeak = () => setRunOptions((previous) => ({ ...previous, speak: !previous.speak }));
 
   return (
@@ -1357,7 +1391,7 @@ function VoiceConsole() {
         </div>
       </nav>
 
-      <GeneralSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <GeneralSettings open={settingsOpen} onOpenChange={setSettingsOpen} onClearChat={clearChat} />
     </main>
   );
 }

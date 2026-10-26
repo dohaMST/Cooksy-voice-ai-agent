@@ -59,7 +59,7 @@ export async function transcribeRecording(
  */
 const GENERIC_GATEWAY_FAILURE = /^(internal error|internal server error|agent run failed)$/i;
 const GENERIC_GATEWAY_HINT =
-  'The gateway failed this turn with a generic "internal error" and did not pass on the provider\'s reason — usually an exhausted Groq quota. Check `openclaw logs`, then retry.';
+  'The gateway failed this turn with a generic "internal error" and did not pass on the provider\'s reason - usually a quota or rate limit on the model provider. Check `openclaw logs`, then retry.';
 
 /** The server's own reason for a failed stream, when it sent one. */
 function streamFailure(payload: { error?: unknown }): string {

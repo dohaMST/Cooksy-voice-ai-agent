@@ -84,9 +84,14 @@ test("shopping_build skips items already in the pantry", async () => {
     resolveRecipes: async (ids) => ids.map((id) => ({ id, name: "Recipe One", thumb: null })),
   });
 
+  // The range is pinned: `shopping_build({})` defaults to the week containing
+  // *today*, so a fixed plan date falls out of range once the calendar moves on
+  // and the test fails for the wrong reason (it did, the day after it was written).
+  const week = { from: "2026-10-19", to: "2026-10-25" };
+
   await executors.plan_set_meal({ date: "2026-10-20", meal: "dinner", recipeId: "1" });
   await executors.pantry_update({ name: "recipe one", quantity: 1, unit: "item" });
-  await executors.shopping_build({});
+  await executors.shopping_build(week);
 
   assert.equal(
     await store.count("shopping_items", {}),
@@ -95,6 +100,6 @@ test("shopping_build skips items already in the pantry", async () => {
   );
 
   await executors.pantry_remove({ name: "recipe one" });
-  await executors.shopping_build({});
+  await executors.shopping_build(week);
   assert.equal(await store.count("shopping_items", {}), 1, "now it should appear");
 });

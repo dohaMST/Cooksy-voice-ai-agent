@@ -102,7 +102,7 @@ describe("streamAgentAnswer", () => {
           onThinking: noop,
           onAnswer: noop,
         }),
-      /exhausted Groq quota|openclaw logs/,
+      /quota|rate limit|openclaw logs/,
     );
   });
 });
