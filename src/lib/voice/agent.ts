@@ -51,6 +51,29 @@ export async function transcribeRecording(
   return text;
 }
 
+/**
+ * The gateway's OpenAI-compatible stream answers any failed run with a hardcoded
+ * `{"message":"internal error","type":"api_error"}` chunk (OpenClaw 2026.8.2), so
+ * the provider's real reason — a 429, a quota — never reaches the browser. Say
+ * that plainly instead of repeating two words that explain nothing.
+ */
+const GENERIC_GATEWAY_FAILURE = /^(internal error|internal server error|agent run failed)$/i;
+const GENERIC_GATEWAY_HINT =
+  'The gateway failed this turn with a generic "internal error" and did not pass on the provider\'s reason — usually an exhausted Groq quota. Check `openclaw logs`, then retry.';
+
+/** The server's own reason for a failed stream, when it sent one. */
+function streamFailure(payload: { error?: unknown }): string {
+  let message = "";
+  if (typeof payload.error === "string") message = payload.error;
+  else if (payload.error && typeof payload.error === "object") {
+    const inner = (payload.error as { message?: unknown }).message;
+    if (typeof inner === "string") message = inner;
+  }
+  const trimmed = message.trim();
+  if (!trimmed) return "The agent stream failed";
+  return GENERIC_GATEWAY_FAILURE.test(trimmed) ? GENERIC_GATEWAY_HINT : trimmed;
+}
+
 /** Streams the agent answer, reporting reasoning summary text and answer deltas separately. */
 export async function streamAgentAnswer(
   turns: Turn[],
@@ -75,7 +98,11 @@ export async function streamAgentAnswer(
       text?: string;
       error?: unknown;
     };
-    if (payload.error || payload.type === "error") throw new Error("The agent stream failed");
+    if (payload.error || payload.type === "error") {
+      // The server forwards the provider's own reason (a rate limit, a rejected tool
+      // payload). Swallowing it made a 429 read as "The agent stream failed".
+      throw new Error(streamFailure(payload));
+    }
     if (payload.type === "response.reasoning_summary_text.delta" && payload.delta) {
       thinking += payload.delta;
       handlers.onThinking(thinking);

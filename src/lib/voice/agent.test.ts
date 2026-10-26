@@ -1,6 +1,6 @@
 import { afterEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { transcribeRecording } from "./agent.ts";
+import { streamAgentAnswer, transcribeRecording } from "./agent.ts";
 
 const realFetch = globalThis.fetch;
 
@@ -52,5 +52,57 @@ describe("transcribeRecording", () => {
       json({ error: "Speech recognition is not configured. Set GROQ_API_KEY." }, 400),
     );
     await assert.rejects(() => transcribeRecording(recording(), () => {}), /not configured/);
+  });
+});
+
+/** One SSE frame per entry, the way the console route re-emits provider events. */
+function sse(frames: unknown[]): Response {
+  return new Response(frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join(""), {
+    status: 200,
+    headers: { "Content-Type": "text/event-stream" },
+  });
+}
+
+const noop = () => {};
+
+describe("streamAgentAnswer", () => {
+  it("reports the provider's real reason instead of a blank stream failure", async () => {
+    stubFetch(() =>
+      sse([{ type: "error", error: "API rate limit reached. Please try again later." }]),
+    );
+    await assert.rejects(
+      () =>
+        streamAgentAnswer([{ role: "user", text: "what is in the pantry" }], {
+          onThinking: noop,
+          onAnswer: noop,
+        }),
+      /rate limit/,
+    );
+  });
+
+  it("falls back to a plain failure when the error carries nothing to show", async () => {
+    stubFetch(() => sse([{ type: "error", error: {} }]));
+    await assert.rejects(
+      () =>
+        streamAgentAnswer([{ role: "user", text: "hello" }], {
+          onThinking: noop,
+          onAnswer: noop,
+        }),
+      /agent stream failed/,
+    );
+  });
+
+  it("explains the gateway's generic internal error instead of echoing it", async () => {
+    stubFetch(() =>
+      sse([{ type: "error", error: { message: "internal error", type: "api_error" } }]),
+    );
+    await assert.rejects(
+      () =>
+        streamAgentAnswer([{ role: "user", text: "add 1kg banana" }], {
+          onThinking: noop,
+          onAnswer: noop,
+        }),
+      /exhausted Groq quota|openclaw logs/,
+    );
   });
 });

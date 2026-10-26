@@ -1,6 +1,6 @@
 import { unlockSpeaker } from "@/lib/voice/speak";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -34,6 +34,7 @@ import {
 import { getAgents, speakWith, useVoiceSettings } from "@/lib/settings/voice";
 import { GeneralSettings } from "@/components/general-settings";
 import {
+  claimsApproval,
   cleanRaw,
   normalizeText,
   parseReply,
@@ -44,6 +45,9 @@ import {
 } from "@/lib/voice/screen";
 import { resolveGatewayModel } from "@/lib/ai/models";
 import { useApprovals } from "@/lib/cooksy/console";
+import { decisionFocus, describeDecision } from "@/lib/cooksy/outcome";
+import { weekOffsetFor } from "@/lib/cooksy/week";
+import type { KitchenView as KitchenTab } from "@/lib/cooksy/types";
 import { KitchenView, PagedScreen, RunStrip, RunView } from "@/components/console-panels";
 import { EmberField, VoiceOrb } from "@/components/ember";
 import { NoticeBar, type Notice, type NoticeTone } from "@/components/notice";
@@ -115,6 +119,8 @@ type Message = {
   at: number;
   steps?: RunStep[];
   sender?: string;
+  /** Written by the console (an approval outcome), not by a model: nothing to retry or think about. */
+  system?: boolean;
 };
 
 type Run = {
@@ -135,6 +141,7 @@ function VoiceConsole() {
   const [isRecording, setIsRecording] = useState(false);
   const [level, setLevel] = useState(0);
   const [openDetails, setOpenDetails] = useState<string | null>(null);
+  const [view, setView] = useState<View>("talk");
 
   const recordingRef = useRef<Recording | null>(null);
   const startingRef = useRef(false);
@@ -142,6 +149,7 @@ function VoiceConsole() {
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const pinnedRef = useRef(true);
   const messagesRef = useRef<Message[]>([]);
   const reasoningRef = useRef("");
   const stepsRef = useRef<RunStep[]>([]);
@@ -171,6 +179,11 @@ function VoiceConsole() {
   const { pending, error: approvalError, decide } = useApprovals();
   const [busyApproval, setBusyApproval] = useState<string | null>(null);
   const [kitchenVersion, setKitchenVersion] = useState(0);
+  // Owned here, not by KitchenView: an approval has to be able to point the Week
+  // tab at the week it wrote to, and switching views must not lose the week the
+  // operator was reading.
+  const [kitchenTab, setKitchenTab] = useState<KitchenTab>("pantry");
+  const [kitchenWeek, setKitchenWeek] = useState(0);
 
   const addStep = useCallback((label: string, detail?: string, tone?: RunStep["tone"]) => {
     stepsRef.current = [
@@ -190,9 +203,68 @@ function VoiceConsole() {
     return messagesRef.current;
   }, []);
 
+  // Kept current every render so the post-turn approval check (a timeout, not a
+  // render) reads the queue as it stands after the poll that follows the reply.
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+
+  /**
+   * Announces an approval the moment the queue gains one.
+   *
+   * The sidebar card and the Run badge are the durable record, but the operator is
+   * usually in Talk when the agent asks, and that view has no queue on screen. One
+   * notice per new row, naming it, so a proposal is never silently waiting.
+   */
+  const seenApprovalsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, run]);
+    const fresh = pending.filter((row) => !seenApprovalsRef.current.has(row._id));
+    for (const row of pending) seenApprovalsRef.current.add(row._id);
+    const first = fresh[0];
+    if (!first) return;
+    showNotice(
+      "info",
+      fresh.length === 1
+        ? `Waiting for your approval — ${normalizeText(first.title)}. Open Run to approve or deny.`
+        : `${fresh.length} approvals are waiting for you. Open Run to review them.`,
+    );
+  }, [pending, showNotice]);
+
+  // Timers the console sets after a turn; cleared on unmount so a warn never fires
+  // into a route that is gone.
+  const guardTimersRef = useRef<number[]>([]);
+  useEffect(
+    () => () => {
+      for (const id of guardTimersRef.current) window.clearTimeout(id);
+      guardTimersRef.current = [];
+    },
+    [],
+  );
+
+  /**
+   * Keeps the conversation at its newest message.
+   *
+   * Two things made this stick at the first message: the Talk section unmounts
+   * when another view is opened (a fresh mount starts at scrollTop 0, and an
+   * effect keyed only on the messages never re-ran), and a smooth scroll restarts
+   * on every streamed token and can settle short of the bottom.
+   *
+   * Pinning is dropped as soon as the operator scrolls up to read something older,
+   * so a reply never yanks the page out from under them.
+   */
+  const onChatScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const el = event.currentTarget;
+    pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (view === "talk") pinnedRef.current = true;
+  }, [view]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pinnedRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, run, view]);
 
   useEffect(() => {
     if (!isRecording) return;
@@ -290,6 +362,24 @@ function VoiceConsole() {
         sender: agentLabel,
       });
       setRun(null);
+
+      // An agent can describe an approval it never actually proposed. The free-tier
+      // fallback model does exactly that: the reply says "I am requesting approval…"
+      // while no tool call was made, so no card ever appears. Once the next poll has
+      // landed, a still-empty queue means there is nothing to approve — say so instead
+      // of leaving the operator waiting for a card that will never arrive. Silence when
+      // anything is waiting, so a question about the existing queue never cries wolf.
+      if (claimsApproval(screen.text)) {
+        const timer = window.setTimeout(() => {
+          if (pendingRef.current.length > 0) return;
+          showNotice(
+            "warn",
+            `${agentLabel} said it was asking for approval, but nothing reached the approval queue. Nothing is waiting in Run — ask again.`,
+          );
+        }, 2_500);
+        guardTimersRef.current = [...guardTimersRef.current, timer];
+      }
+
       if (!opts.speak) return;
       try {
         setSpeaking(true);
@@ -486,7 +576,6 @@ function VoiceConsole() {
       });
   }, [messages, runAgent]);
 
-  const [view, setView] = useState<View>("talk");
   const [, setTheme] = useTheme();
   const busy = Boolean(run) && run?.stage !== "error";
 
@@ -607,6 +696,10 @@ function VoiceConsole() {
   const decideApproval = useCallback(
     async (id: string, decision: "approve" | "deny") => {
       setBusyApproval(id);
+      // The pending row disappears the moment it is decided, so read it first: the
+      // confirmation in the chat is built from the stored approval and cooksy-api's
+      // own result, never from the model's account of what it was going to do.
+      const record = pending.find((row) => row._id === id);
       try {
         const outcome = await decide(id, decision);
         if (!outcome) return; // the hook already put the real error on screen
@@ -618,12 +711,39 @@ function VoiceConsole() {
               : "Denied. Nothing was changed.",
           );
           setKitchenVersion((n) => n + 1);
+          if (record) {
+            appendMessage({
+              id: newId(),
+              role: "assistant",
+              text: describeDecision(record, decision, outcome),
+              at: Date.now(),
+              sender: "Kitchen",
+              system: true,
+            });
+            // Point the Kitchen view at what just changed; an approval for a date in
+            // another week used to land on a tab that could not show it.
+            const focus = decision === "approve" ? decisionFocus(record, outcome) : null;
+            if (focus) {
+              setKitchenTab(focus.tab);
+              if (focus.date) setKitchenWeek(weekOffsetFor(focus.date));
+            }
+          }
         } else if (outcome.code === "failed") {
           showNotice(
             "error",
             `Approved, but the action failed: ${outcome.error ?? "no reason given"}`,
           );
           setKitchenVersion((n) => n + 1);
+          if (record) {
+            appendMessage({
+              id: newId(),
+              role: "assistant",
+              text: describeDecision(record, decision, outcome),
+              at: Date.now(),
+              sender: "Kitchen",
+              system: true,
+            });
+          }
         } else if (outcome.code === "not_found") {
           showNotice("error", "That approval no longer exists.");
         } else if (outcome.code === "expired") {
@@ -635,7 +755,7 @@ function VoiceConsole() {
         setBusyApproval(null);
       }
     },
-    [decide, showNotice],
+    [appendMessage, decide, pending, showNotice],
   );
 
   useEffect(() => {
@@ -869,6 +989,7 @@ function VoiceConsole() {
                   <h1 className="sr-only">Cooksy voice console</h1>
                   <div
                     ref={scrollRef}
+                    onScroll={onChatScroll}
                     className="scroll-thin mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto pb-2 pr-1"
                   >
                     {/* role=log announces each finished turn once; the live status card
@@ -920,25 +1041,35 @@ function VoiceConsole() {
                               >
                                 <ThumbsUp className="size-3" aria-hidden /> Useful
                               </button>
-                              <button
-                                type="button"
-                                onClick={retry}
-                                disabled={busy}
-                                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
-                              >
-                                <RotateCcw className="size-3" aria-hidden /> Retry
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setOpenDetails((current) =>
-                                    current === message.id ? null : message.id,
-                                  )
-                                }
-                                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-                              >
-                                <ListTree className="size-3" aria-hidden /> Thinking
-                              </button>
+                              {!message.system && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={retry}
+                                    disabled={busy}
+                                    className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
+                                  >
+                                    <RotateCcw className="size-3" aria-hidden /> Retry
+                                  </button>
+                                  {/* Only when the provider actually streamed a reasoning
+                                      summary: OpenClaw's chat-completions endpoint has no
+                                      reasoning channel, so offering the button regardless
+                                      opened an empty panel. */}
+                                  {message.reasoning?.trim() ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setOpenDetails((current) =>
+                                          current === message.id ? null : message.id,
+                                        )
+                                      }
+                                      className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                                    >
+                                      <ListTree className="size-3" aria-hidden /> Thinking
+                                    </button>
+                                  ) : null}
+                                </>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -957,12 +1088,11 @@ function VoiceConsole() {
                                 <Volume2 className="size-3" aria-hidden /> Replay
                               </button>
                             </div>
-                            {openDetails === message.id && (
+                            {openDetails === message.id && message.reasoning?.trim() && (
                               <div className="panel p-4">
                                 <p className="dc-label">Agent thinking</p>
                                 <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
-                                  {message.reasoning?.trim() ||
-                                    "No thinking summary was returned for this answer."}
+                                  {message.reasoning}
                                 </p>
                               </div>
                             )}
@@ -972,7 +1102,12 @@ function VoiceConsole() {
                     </div>
 
                     {run && (
-                      <StatusCard run={run} onDismiss={() => setRun(null)} onCancel={stopRun} />
+                      <StatusCard
+                        run={run}
+                        onDismiss={() => setRun(null)}
+                        onCancel={stopRun}
+                        onRetry={retry}
+                      />
                     )}
                   </div>
                 </>
@@ -1158,7 +1293,13 @@ function VoiceConsole() {
               <p className="mt-1 text-sm text-muted-foreground">
                 What you have, what is planned, and what still has to be bought.
               </p>
-              <KitchenView version={kitchenVersion} />
+              <KitchenView
+                version={kitchenVersion}
+                weekOffset={kitchenWeek}
+                onWeekOffsetChange={setKitchenWeek}
+                tab={kitchenTab}
+                onTabChange={setKitchenTab}
+              />
             </div>
           )}
 
@@ -1236,10 +1377,12 @@ function StatusCard({
   run,
   onDismiss,
   onCancel,
+  onRetry,
 }: {
   run: Run;
   onDismiss: () => void;
   onCancel: () => void;
+  onRetry: () => void;
 }) {
   if (run.stage === "error") {
     return (
@@ -1249,7 +1392,12 @@ function StatusCard({
         </p>
         <p className="mt-2 text-sm text-foreground">{run.error}</p>
         <StepLog steps={run.steps} defaultOpen />
-        <InlineKeyboard buttons={[{ key: "ok", label: "Dismiss", onClick: onDismiss }]} />
+        <InlineKeyboard
+          buttons={[
+            { key: "retry", label: "↺ Retry", onClick: onRetry },
+            { key: "ok", label: "Dismiss", onClick: onDismiss },
+          ]}
+        />
       </BotBubble>
     );
   }

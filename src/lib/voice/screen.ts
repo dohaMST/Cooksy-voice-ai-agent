@@ -206,9 +206,23 @@ export function spokenScreen(screen: Screen): string {
   return `${screen.text} ${options.map((label, i) => `${i + 1}, ${label}.`).join(" ")}`;
 }
 
+/**
+ * Does this reply claim that an approval is waiting?
+ *
+ * Used only to catch the failure mode where the sentence exists but no approval
+ * row was ever created — a weakened fallback model writes "I am requesting
+ * approval…" without calling the tool, and the operator then waits for a card
+ * that will never appear. The queue, never the words, decides what is approvable.
+ */
+const CLAIM_PATTERN =
+  /\b(request(ing|ed)?|await(ing)?|waiting for|pending|sent for|needs?)\b[^.!?\n]{0,30}\bapproval\b/i;
+
+export function claimsApproval(text: string): boolean {
+  return CLAIM_PATTERN.test(text);
+}
+
 /** Blueprint: local page budget, measured in UTF-16 units (Telegram max is 4096 characters). */
 export const PAGE_BUDGET = 3500;
-
 /** Splits text into pages at paragraph, sentence, or word breaks, never mid code point. Nothing is dropped. */
 export function paginate(text: string, budget = PAGE_BUDGET): string[] {
   const pages: string[] = [];

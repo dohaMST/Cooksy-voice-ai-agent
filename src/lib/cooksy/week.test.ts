@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatRange, weekRange } from "./week.ts";
+import { formatDay, formatRange, weekOffsetFor, weekRange } from "./week.ts";
 
 /** Sunday 25 October 2026, the last day of the week that starts on the 19th. */
 const SUNDAY = new Date(2026, 9, 25);
@@ -26,4 +26,26 @@ test("formatRange shortens a shared month and names both when it straddles", () 
 
 test("formatRange falls back to the raw dates instead of inventing one", () => {
   assert.equal(formatRange("bad", "2026-11-01"), "bad → 2026-11-01");
+});
+
+test("formatDay names the weekday and the month", () => {
+  assert.equal(formatDay("2026-10-27"), "Tue 27 Oct");
+  assert.equal(formatDay("2026-10-25"), "Sun 25 Oct");
+});
+
+test("formatDay leaves an unusable date alone", () => {
+  assert.equal(formatDay("next tuesday"), "next tuesday");
+});
+
+test("weekOffsetFor finds the week a stored write landed in", () => {
+  // Sunday: "tomorrow" is already next week, which is exactly how an approved
+  // meal ended up in a week the Week tab never showed.
+  assert.equal(weekOffsetFor("2026-10-27", SUNDAY), 1);
+  assert.equal(weekOffsetFor("2026-10-25", SUNDAY), 0);
+  assert.equal(weekOffsetFor("2026-10-12", SUNDAY), -1);
+  assert.equal(weekOffsetFor("2026-12-30", SUNDAY), 10);
+});
+
+test("weekOffsetFor falls back to this week for an unusable date", () => {
+  assert.equal(weekOffsetFor("soon", SUNDAY), 0);
 });

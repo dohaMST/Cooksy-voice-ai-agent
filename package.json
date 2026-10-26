@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --test src/lib/ai/models.test.ts src/lib/cooksy/week.test.ts src/lib/voice/agent.test.ts src/lib/voice/local-asr.test.ts src/lib/voice/screen.test.ts src/lib/voice/speak.test.ts",
+    "test": "node --test src/lib/ai/models.test.ts src/lib/cooksy/week.test.ts src/lib/cooksy/outcome.test.ts src/lib/voice/agent.test.ts src/lib/voice/local-asr.test.ts src/lib/voice/screen.test.ts src/lib/voice/speak.test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "openclaw:localize": "node scripts/localize-openclaw.mjs"

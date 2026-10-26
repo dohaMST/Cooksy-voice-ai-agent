@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeText, parseReply, parseScreen, stripMarkers } from "./screen.ts";
+import { claimsApproval, normalizeText, parseReply, parseScreen, stripMarkers } from "./screen.ts";
 
 describe("parseScreen", () => {
   it("accepts a screen without the redundant kind discriminator", () => {
@@ -89,5 +89,22 @@ describe("parseReply", () => {
   it("never returns an empty screen", () => {
     assert.equal(parseReply("").text.length > 0, true);
     assert.equal(parseReply("[[tab:talk]]").text.length > 0, true);
+  });
+});
+
+describe("claimsApproval", () => {
+  it("spots the sentence a fallback model writes without calling the tool", () => {
+    assert.equal(
+      claimsApproval("I am requesting approval to add 2 pieces of orange to the pantry."),
+      true,
+    );
+    assert.equal(claimsApproval("Your change is waiting for your approval."), true);
+    assert.equal(claimsApproval("There is a pending approval for lunch on 27 Oct."), true);
+  });
+
+  it("stays quiet when approval is only mentioned in passing", () => {
+    assert.equal(claimsApproval("Nothing is written without your approval."), false);
+    assert.equal(claimsApproval("Your pantry has 7 items."), false);
+    assert.equal(claimsApproval("I approved nothing and changed nothing."), false);
   });
 });

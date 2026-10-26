@@ -26,7 +26,13 @@ import {
 import { ENGINE_LABEL, getAgents, useVoiceSettings } from "@/lib/settings/voice";
 import { formatRange, weekRange } from "@/lib/cooksy/week";
 import { useKitchen } from "@/lib/cooksy/console";
-import type { ApprovalRecord, PantryItem, PlanEntry, ShoppingItem } from "@/lib/cooksy/types";
+import type {
+  ApprovalRecord,
+  KitchenView as KitchenTab,
+  PantryItem,
+  PlanEntry,
+  ShoppingItem,
+} from "@/lib/cooksy/types";
 
 export type PanelStage =
   "received" | "transcribing" | "planning" | "thinking" | "streaming" | "speaking" | "error";
@@ -617,11 +623,24 @@ function ShoppingList({
  * the console is small enough that one extra pair of requests is cheaper than a
  * card that shows a number the tab next to it disagrees with.
  *
- * The week is navigable: an approval can write a meal for a date in another week,
- * and a list that only ever showed "this week" made that write invisible.
+ * The week and the tab are owned by the console, not by this component: an
+ * approval can write a meal for a date in another week, and a list that always
+ * reopened on "this week" made that write invisible — and switching to Talk and
+ * back reset the week the operator had paged to.
  */
-export function KitchenView({ version = 0 }: { version?: number }) {
-  const [weekOffset, setWeekOffset] = useState(0);
+export function KitchenView({
+  version = 0,
+  weekOffset,
+  onWeekOffsetChange,
+  tab,
+  onTabChange,
+}: {
+  version?: number;
+  weekOffset: number;
+  onWeekOffsetChange: (offset: number) => void;
+  tab: KitchenTab;
+  onTabChange: (tab: KitchenTab) => void;
+}) {
   const range = weekRange(weekOffset);
 
   const pantry = useKitchen("pantry");
@@ -664,7 +683,7 @@ export function KitchenView({ version = 0 }: { version?: number }) {
       </div>
 
       <section className="panel p-4 sm:p-5">
-        <Tabs defaultValue="pantry">
+        <Tabs value={tab} onValueChange={(next) => onTabChange(next as KitchenTab)}>
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             <TabsTrigger
               value="pantry"
@@ -705,7 +724,7 @@ export function KitchenView({ version = 0 }: { version?: number }) {
               <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setWeekOffset((current) => current - 1)}
+                  onClick={() => onWeekOffsetChange(weekOffset - 1)}
                   aria-label="Previous week"
                   className="grid size-9 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-muted-foreground transition-colors hover:text-foreground"
                 >
@@ -713,7 +732,7 @@ export function KitchenView({ version = 0 }: { version?: number }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setWeekOffset(0)}
+                  onClick={() => onWeekOffsetChange(0)}
                   disabled={weekOffset === 0}
                   className="h-9 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
                 >
@@ -721,7 +740,7 @@ export function KitchenView({ version = 0 }: { version?: number }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setWeekOffset((current) => current + 1)}
+                  onClick={() => onWeekOffsetChange(weekOffset + 1)}
                   aria-label="Next week"
                   className="grid size-9 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-muted-foreground transition-colors hover:text-foreground"
                 >

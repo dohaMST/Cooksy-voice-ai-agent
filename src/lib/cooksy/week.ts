@@ -11,6 +11,8 @@
  */
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function iso(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -37,4 +39,30 @@ export function formatRange(from: string, to: string): string {
       ? String(start.getDate())
       : `${start.getDate()} ${MONTHS[start.getMonth()]}`;
   return `${left} – ${end.getDate()} ${MONTHS[end.getMonth()]}`;
+}
+
+/** `Tue 27 Oct`: one date, for a confirmation line in the conversation. */
+export function formatDay(date: string): string {
+  if (!ISO_DATE.test(date)) return date;
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return `${DAYS[parsed.getDay()]} ${parsed.getDate()} ${MONTHS[parsed.getMonth()]}`;
+}
+
+/**
+ * How many weeks `date` sits from the week containing `today`. This is what keeps
+ * an approved write visible: a meal for next Tuesday must open the Week tab on
+ * next week instead of leaving the operator staring at an empty "this week".
+ */
+export function weekOffsetFor(date: string, today = new Date()): number {
+  if (!ISO_DATE.test(date)) return 0;
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return 0;
+  const current = weekRange(0, today).from;
+  const target = weekRange(0, parsed).from;
+  // Both sides are date-only Mondays, so measure them in UTC: a DST change would
+  // otherwise make a 7-day difference read as 6.96 days and round the wrong way.
+  const utc = (iso: string) =>
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+  return Math.round((utc(target) - utc(current)) / (7 * 24 * 60 * 60 * 1000));
 }
